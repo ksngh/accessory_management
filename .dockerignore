@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.*
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+README.md
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+/.idea
+/.vscode
+*.local
+*.log

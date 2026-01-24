@@ -1,0 +1,7 @@
+{
+  "name": "Luxury Shine Manager",
+  "description": "A comprehensive jewelry inventory and purchase order management system with a soft vanilla aesthetic.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

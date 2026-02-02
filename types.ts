@@ -10,8 +10,8 @@ export interface Product {
   category: string;
   imageUrl: string;
   supplier: string;
-  stock: number; // 재고 수량 추가
-  hasSizes?: boolean; // True for Rings
+  stock: number;
+  hasSizes?: boolean;
 }
 
 export interface Category {
@@ -27,9 +27,14 @@ export interface Supplier {
 }
 
 export enum OrderStatus {
-  COMPLETED = '완료',
   PENDING = '대기',
-  CANCELED = '취소'
+  COMPLETED = '완료'
+}
+
+export interface OrderItem extends Product {
+  quantity: number;
+  selectedColor: Color;
+  selectedSize?: RingSize;
 }
 
 export interface Order {
@@ -40,10 +45,5 @@ export interface Order {
   itemCount: number;
   totalAmount: number;
   status: OrderStatus;
-}
-
-export interface OrderItem extends Product {
-  quantity: number;
-  selectedColor: Color;
-  selectedSize?: RingSize;
+  items?: OrderItem[]; // 상세 내역 조회를 위한 아이템 리스트 추가
 }

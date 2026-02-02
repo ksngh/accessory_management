@@ -1,8 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout.tsx';
-import { INITIAL_CATEGORIES, MOCK_SUPPLIERS } from '../constants.tsx';
+import Layout from '../components/Layout';
+import { INITIAL_CATEGORIES, MOCK_SUPPLIERS } from '../constants';
 
 interface BulkProductEntry {
   id: string;
@@ -72,18 +72,15 @@ const ProductForm: React.FC = () => {
         {/* 거래처 선택 */}
         <section className="space-y-2">
           <label className="text-[11px] font-black text-primary-text uppercase tracking-widest px-1">거래처 선택</label>
-          <div className="relative">
-            <select 
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value)}
-              className="w-full h-14 px-5 rounded-2xl border border-primary/30 focus:border-primary-dark focus:ring-0 text-base appearance-none bg-white font-bold shadow-sm"
-            >
-              {MOCK_SUPPLIERS.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
-              ))}
-            </select>
-            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-primary-dark">unfold_more</span>
-          </div>
+          <select 
+            value={supplier}
+            onChange={(e) => setSupplier(e.target.value)}
+            className="w-full h-14 pl-5 pr-10 rounded-2xl border border-primary/30 focus:border-primary-dark focus:ring-2 focus:ring-primary/20 text-base bg-white font-bold shadow-sm transition-all outline-none"
+          >
+            {MOCK_SUPPLIERS.map(s => (
+              <option key={s.id} value={s.name}>{s.name}</option>
+            ))}
+          </select>
         </section>
 
         {/* 일괄 설정 바 */}

@@ -1,21 +1,24 @@
 
 import React from 'react';
-import Layout from '../components/Layout.tsx';
-import { MOCK_ORDERS } from '../constants.tsx';
+import { useNavigate } from 'react-router-dom';
+import Layout from '../components/Layout';
+import { MOCK_ORDERS } from '../constants';
 import { OrderStatus } from '../types';
 
 const OrderHistory: React.FC = () => {
+  const navigate = useNavigate();
+  
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case OrderStatus.COMPLETED: return 'bg-green-100 text-green-700';
       case OrderStatus.PENDING: return 'bg-orange-100 text-orange-700';
-      case OrderStatus.CANCELED: return 'bg-red-100 text-red-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
 
   return (
-    <Layout title="발주 내역" showMenu>
+    // Removed showMenu as it is not defined in LayoutProps
+    <Layout title="발주 내역">
       <div className="px-4 py-4 space-y-4">
         {/* Statistics Summary */}
         <div className="grid grid-cols-3 gap-3 mb-2">
@@ -35,7 +38,11 @@ const OrderHistory: React.FC = () => {
 
         <div className="space-y-4">
           {MOCK_ORDERS.map(order => (
-            <div key={order.id} className="bg-white rounded-2xl border border-primary/10 shadow-sm overflow-hidden active:scale-[0.98] transition-transform">
+            <div 
+              key={order.id} 
+              onClick={() => navigate(`/orders/${order.id}`)}
+              className="bg-white rounded-2xl border border-primary/10 shadow-sm overflow-hidden active:scale-[0.98] transition-transform cursor-pointer"
+            >
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
@@ -66,7 +73,6 @@ const OrderHistory: React.FC = () => {
           ))}
         </div>
 
-        {/* Empty State Mockup */}
         <div className="py-12 border-2 border-dashed border-primary/10 rounded-3xl flex flex-col items-center justify-center text-[#D1D1D6] gap-2">
            <span className="material-symbols-outlined text-5xl">history</span>
            <p className="text-sm font-bold">이전 내역이 더 없습니다.</p>

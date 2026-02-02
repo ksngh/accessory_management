@@ -1,5 +1,5 @@
 {
-  "name": "Luxury Shine Manager",
+  "name": "악세사리 관리",
   "description": "A comprehensive jewelry inventory and purchase order management system with a soft vanilla aesthetic.",
   "requestFramePermissions": [
     "camera"

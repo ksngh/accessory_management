@@ -1,7 +1,7 @@
 
 import React from 'react';
-import Layout from '../components/Layout';
-import { INITIAL_CATEGORIES } from '../constants';
+import Layout from '../components/Layout.tsx';
+import { INITIAL_CATEGORIES } from '../constants.tsx';
 
 const CategorySettings: React.FC = () => {
   return (

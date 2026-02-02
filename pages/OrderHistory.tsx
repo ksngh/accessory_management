@@ -1,7 +1,7 @@
 
 import React from 'react';
-import Layout from '../components/Layout';
-import { MOCK_ORDERS } from '../constants';
+import Layout from '../components/Layout.tsx';
+import { MOCK_ORDERS } from '../constants.tsx';
 import { OrderStatus } from '../types';
 
 const OrderHistory: React.FC = () => {

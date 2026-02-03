@@ -15,9 +15,9 @@ interface OrderRow {
 
 const PurchaseOrder: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedSupplier, setSelectedSupplier] = useState<string>(MOCK_SUPPLIERS[0].name);
+  const [selectedSupplier, setSelectedSupplier] = useState<string>(MOCK_SUPPLIERS[0]?.name ?? '');
   const [rows, setRows] = useState<OrderRow[]>([
-    { rowId: 'r-' + Math.random(), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }
+    { rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }
   ]);
   
   const [isProductPickerOpen, setIsProductPickerOpen] = useState(false);
@@ -40,14 +40,14 @@ const PurchaseOrder: React.FC = () => {
   }, [selectedSupplier, isProductPickerOpen]);
 
   const addRow = () => {
-    setRows([...rows, { rowId: 'r-' + Math.random(), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
+    setRows([...rows, { rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
   };
 
   const removeRow = (rowId: string) => {
     if (rows.length > 1) {
       setRows(rows.filter(r => r.rowId !== rowId));
     } else {
-      setRows([{ rowId: 'r-' + Math.random(), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
+      setRows([{ rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
     }
   };
 
@@ -116,15 +116,15 @@ const PurchaseOrder: React.FC = () => {
     }
   };
 
-  const totalItems = rows.reduce((sum, row) => sum + (Object.values(row.quantities) as number[]).reduce((s, q) => s + q, 0), 0);
+  const totalItems = rows.reduce((sum, row) => sum + Object.values(row.quantities).reduce((s, q) => Number(s) + Number(q), 0), 0);
   const totalAmount = rows.reduce((sum, row) => {
     if (!row.product) return sum;
-    const rowQty = (Object.values(row.quantities) as number[]).reduce((s, q) => s + q, 0);
-    return sum + (row.product.price * rowQty);
+    const rowQty = Object.values(row.quantities).reduce((s, q) => Number(s) + Number(q), 0);
+    return Number(sum) + (Number(row.product.price) * Number(rowQty));
   }, 0);
 
   return (
-    <Layout showBack>
+    <Layout title="발주 등록">
       <div className="px-4 py-6 space-y-6 pb-48">
         <section className="space-y-3 px-1">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">거래처 선택</label>
@@ -132,7 +132,7 @@ const PurchaseOrder: React.FC = () => {
             value={selectedSupplier}
             onChange={(e) => {
               setSelectedSupplier(e.target.value);
-              setRows([{ rowId: 'r-' + Math.random(), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
+              setRows([{ rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
             }}
             className="w-full h-14 pl-5 pr-10 rounded-2xl border border-primary/30 focus:border-primary-dark focus:ring-2 focus:ring-primary/20 text-sm bg-white font-bold shadow-sm transition-all outline-none"
           >
@@ -140,15 +140,6 @@ const PurchaseOrder: React.FC = () => {
               <option key={s.id} value={s.name}>{s.name}</option>
             ))}
           </select>
-        </section>
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary-dark font-bold">receipt_long</span>
-              <h3 className="text-sm font-black text-primary-text uppercase tracking-tight">발주 품목</h3>
-            </div>
-          </div>
 
           <div className="space-y-4">
             {rows.map((row) => (

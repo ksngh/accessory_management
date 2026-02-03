@@ -44,7 +44,6 @@ const SupplierSettings: React.FC = () => {
   };
 
   return (
-    // Removed showMenu as it is not defined in LayoutProps
     <Layout title="거래처 설정">
       <div className="px-5 py-6 space-y-8 pb-40">
         <div className="flex items-center justify-between">
@@ -70,7 +69,6 @@ const SupplierSettings: React.FC = () => {
                 </div>
                 <div>
                   <p className="font-black text-primary-text text-base leading-tight">{s.name}</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Registered Supplier</p>
                 </div>
               </div>
               
@@ -97,13 +95,6 @@ const SupplierSettings: React.FC = () => {
               <p className="text-sm font-black italic">등록된 거래처가 없습니다.</p>
             </div>
           )}
-        </div>
-
-        <div className="p-6 rounded-[2.5rem] bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 text-center">
-          <span className="material-symbols-outlined text-2xl text-gray-300">help</span>
-          <p className="text-[11px] font-bold text-gray-400 px-4 leading-relaxed">
-            거래처를 삭제하면 해당 거래처의 상품 데이터 필터링 시<br/>보이지 않을 수 있으니 주의해 주세요.
-          </p>
         </div>
       </div>
 

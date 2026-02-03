@@ -39,7 +39,7 @@ const StockEdit: React.FC = () => {
   }, [id]);
 
   const totalStock = useMemo(() => {
-    return (Object.values(detailedStock) as number[]).reduce((sum, val) => sum + val, 0);
+    return Object.values(detailedStock).reduce((sum, val) => Number(sum) + Number(val), 0);
   }, [detailedStock]);
 
   const updateQuantity = (key: string, delta: number) => {

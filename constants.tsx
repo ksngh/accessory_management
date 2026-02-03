@@ -1,3 +1,4 @@
+
 import { Product, Category, Order, OrderStatus, Supplier, Color, RingSize } from './types';
 
 export const COLORS: Color[] = ['골드', '로즈', '실버'];
@@ -20,33 +21,25 @@ export const MOCK_SUPPLIERS: Supplier[] = [
 const IMAGES = {
   반지: [
     '1605100804763-247f67b3557e',
-    '1603561591411-07134e71a2a9',
-    '1603561591411-07134e71a2a9',
-    '1598560917505-59a3ad559071',
-    '1626784215021-2e39ccf541e5',
-    '1612450800052-759c39abf922'
+    '1588444837941-ad2c6275b09a',
+    '1617114770295-690a61821033',
+    '1598560917505-59a3ad559071'
   ],
   목걸이: [
     '1599643478123-242f279105ea',
     '1611591437281-460bfbe1220a',
     '1611085583191-a3b1a308c1db',
-    '1512163143273-b02f4faad74c',
-    '1601121141461-9d6647bca1ed',
-    '1535633302704-b02f4faad74c'
+    '1512163143273-b02f4faad74c'
   ],
   귀걸이: [
     '1535633302704-b02f4faad74c',
     '1601121141461-9d6647bca1ed',
-    '1612450800052-759c39abf922',
-    '1603912627214-1213ae408a6b',
-    '1626784215021-2e39ccf541e5'
+    '1612450800052-759c39abf922'
   ],
   팔찌: [
     '1515562141207-7a88fb7ce338',
     '1603912627214-1213ae408a6b',
-    '1573408302357-a99f1807353b',
-    '1599643478123-242f279105ea',
-    '1611591437281-460bfbe1220a'
+    '1573408302357-a99f1807353b'
   ]
 };
 
@@ -56,10 +49,10 @@ const createProducts = (supplier: string, prefix: string, count: number): Produc
     const category = categories[i % categories.length] as keyof typeof IMAGES;
     const imageList = IMAGES[category] || IMAGES['목걸이'];
     const imageId = imageList[i % imageList.length];
-
+    
     return {
       id: `${prefix}-${i}`,
-      name: `${prefix.toUpperCase()}-${i + 100}`,
+      name: `${prefix.toUpperCase()}-${i + 100}`, 
       sku: `${prefix.toUpperCase()}${i + 100}`,
       price: (Math.floor(Math.random() * 20) + 5) * 10000,
       category,
@@ -77,6 +70,9 @@ export const MOCK_PRODUCTS: Product[] = [
   ...createProducts('Prime Wholesale', 'pw', 11),
 ];
 
+// 반지 제품 하나를 선택하여 동일 품목의 다른 옵션 시나리오 구성
+const sampleRing = MOCK_PRODUCTS.find(p => p.category === '반지') || MOCK_PRODUCTS[0];
+
 export const MOCK_ORDERS: Order[] = [
   {
     id: 'o1',
@@ -87,10 +83,11 @@ export const MOCK_ORDERS: Order[] = [
     totalAmount: 480000,
     status: OrderStatus.COMPLETED,
     items: [
-      { ...MOCK_PRODUCTS[0], quantity: 1, selectedColor: '골드' },
-      { ...MOCK_PRODUCTS[1], quantity: 2, selectedColor: '실버' },
-      { ...MOCK_PRODUCTS[2], quantity: 1, selectedColor: '로즈', selectedSize: '11호' },
-      { ...MOCK_PRODUCTS[3], quantity: 5, selectedColor: '골드' },
+      // 동일 품목(반지), 다른 색상/호수 예시
+      { ...sampleRing, quantity: 2, selectedColor: '골드', selectedSize: '11호' },
+      { ...sampleRing, quantity: 2, selectedColor: '실버', selectedSize: '11호' },
+      { ...sampleRing, quantity: 1, selectedColor: '골드', selectedSize: '15호' },
+      { ...MOCK_PRODUCTS[1], quantity: 5, selectedColor: '골드' },
     ]
   },
   {
@@ -102,8 +99,8 @@ export const MOCK_ORDERS: Order[] = [
     totalAmount: 220000,
     status: OrderStatus.PENDING,
     items: [
-      { ...MOCK_PRODUCTS[12], quantity: 1, selectedColor: '실버' },
-      { ...MOCK_PRODUCTS[13], quantity: 3, selectedColor: '골드' },
+      { ...MOCK_PRODUCTS[12], quantity: 2, selectedColor: '실버' },
+      { ...MOCK_PRODUCTS[12], quantity: 2, selectedColor: '골드' },
     ]
   }
 ];

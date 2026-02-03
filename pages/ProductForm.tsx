@@ -45,11 +45,11 @@ const ProductForm: React.FC = () => {
     let count = 0;
 
     fileList.forEach((file) => {
-      const reader = new FileReader();
+      const reader = new window.FileReader();
       reader.onloadend = () => {
         loadedEntries.push({
           id: Math.random().toString(36).substr(2, 9),
-          image: reader.result as string,
+          image: reader.result ? String(reader.result) : null,
           category: bulkCategory,
           price: bulkPrice
         });

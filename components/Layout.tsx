@@ -13,12 +13,10 @@ const Layout: React.FC<LayoutProps> = ({ children, title, showBack }) => {
   const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // 설정 모달 관련 상태
   const [storeName, setStoreName] = useState(() => localStorage.getItem('storeName') || 'vanilla');
   const [isEditingStore, setIsEditingStore] = useState(false);
   const [tempName, setTempName] = useState(storeName);
 
-  // 매장 이름이 변경될 때마다 헤더에 반영하기 위해 effect 사용
   useEffect(() => {
     const savedName = localStorage.getItem('storeName');
     if (savedName) setStoreName(savedName);
@@ -26,7 +24,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title, showBack }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
-    window.location.href = '/'; // 강제 새로고침으로 로그인 페이지 이동
+    // HashRouter 환경에서는 단순히 navigate를 쓰거나 새로고침하는 것이 안전합니다.
+    window.location.reload(); 
   };
 
   const handleSaveStoreName = () => {
@@ -56,9 +55,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title, showBack }) => {
               </button>
             )}
           </div>
-          {/* 헤더 제목을 매장 이름으로 통일 */}
           <h2 className="text-xl font-black leading-tight tracking-tighter flex-1 text-center truncate px-2 text-primary-text uppercase">
-            {storeName}
+            {title || storeName}
           </h2>
           <div className="w-12 flex justify-end" />
         </div>
@@ -68,7 +66,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title, showBack }) => {
         {children}
       </main>
 
-      {/* 내비게이션 바 */}
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full bg-white/90 backdrop-blur-xl border-t border-primary/20 px-4 pt-3 pb-8 flex justify-between items-center z-50">
         {navItems.map((item) => (
           <button
@@ -92,7 +89,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title, showBack }) => {
       </nav>
       <div className="h-6 bg-white fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[480px] w-full z-40"></div>
 
-      {/* 내 정보 관리 모달 (창) */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white w-full max-w-xs rounded-[3rem] p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200 relative">

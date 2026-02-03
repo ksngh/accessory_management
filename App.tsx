@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Inventory from './pages/Inventory.tsx';
-import ProductForm from './pages/ProductForm.tsx';
-import SupplierSettings from './pages/SupplierSettings.tsx';
-import PurchaseOrder from './pages/PurchaseOrder.tsx';
-import OrderHistory from './pages/OrderHistory.tsx';
-import OrderDetail from './pages/OrderDetail.tsx';
-import StockEdit from './pages/StockEdit.tsx';
-import Login from './pages/Login.tsx';
+import Inventory from './pages/Inventory';
+import ProductForm from './pages/ProductForm';
+import SupplierSettings from './pages/SupplierSettings';
+import PurchaseOrder from './pages/PurchaseOrder';
+import OrderHistory from './pages/OrderHistory';
+import OrderDetail from './pages/OrderDetail';
+import StockEdit from './pages/StockEdit';
+import Login from './pages/Login';
+import Statistics from './pages/Statistics';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -63,6 +64,10 @@ const App: React.FC = () => {
           <Route 
             path="/orders/:id" 
             element={isLoggedIn ? <OrderDetail /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/statistics" 
+            element={isLoggedIn ? <Statistics /> : <Navigate to="/login" replace />} 
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />

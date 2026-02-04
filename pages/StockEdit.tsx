@@ -2,40 +2,40 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { MOCK_PRODUCTS, COLORS, RING_SIZES } from '../constants';
-import { Product, Color, RingSize } from '../types';
+import { getProduct } from '../src/api/products';
+import { getStock, updateStock } from '../src/api/stock';
+import { Product, StockVariant, Color, RingSize } from '../types';
+import { COLORS, RING_SIZES } from '../constants';
 
 const StockEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   
-  // 상세 재고 상태 관리
-  // key format: 'color' or 'color-size'
   const [detailedStock, setDetailedStock] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const found = MOCK_PRODUCTS.find(p => p.id === id);
-    if (found) {
-      setProduct(found);
-      
-      // 목업 데이터를 기반으로 초기 상세 재고 생성 (실제 앱에서는 서버에서 가져옴)
-      const initial: Record<string, number> = {};
-      if (found.hasSizes) {
-        RING_SIZES.forEach(size => {
-          COLORS.forEach(color => {
-            const seed = (found.id.length + color.length + size.length) % 10;
-            initial[`${color}-${size}`] = Math.floor((found.stock / 33) + seed);
-          });
+    if (!id) return;
+
+    const fetchData = async () => {
+      try {
+        const [productData, stockData] = await Promise.all([
+          getProduct(id),
+          getStock(id),
+        ]);
+        setProduct(productData);
+        const initialStock: Record<string, number> = {};
+        stockData.variants.forEach(variant => {
+          const key = variant.size ? `${variant.color}-${variant.size}` : variant.color;
+          initialStock[key] = variant.quantity;
         });
-      } else {
-        COLORS.forEach(color => {
-          const seed = (found.id.length + color.length) % 10;
-          initial[color] = Math.floor((found.stock / 3) + seed);
-        });
+        setDetailedStock(initialStock);
+      } catch (error) {
+        console.error("Failed to fetch data", error);
       }
-      setDetailedStock(initial);
-    }
+    };
+
+    fetchData();
   }, [id]);
 
   const totalStock = useMemo(() => {
@@ -57,12 +57,22 @@ const StockEdit: React.FC = () => {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (product) {
-      product.stock = totalStock;
-      // 상세 데이터 저장 로직...
+      const variants: StockVariant[] = Object.entries(detailedStock).map(([key, quantity]) => {
+        const parts = key.split('-');
+        const color = parts[0] as Color;
+        const size = parts.length > 1 ? parts[1] as RingSize : undefined;
+        return { color, size, quantity };
+      });
+      try {
+        await updateStock(product.id, variants);
+        navigate(-1);
+      } catch (error) {
+        console.error("Failed to save stock", error);
+        alert('저장에 실패했습니다.');
+      }
     }
-    navigate(-1);
   };
 
   if (!product) return null;
@@ -77,7 +87,7 @@ const StockEdit: React.FC = () => {
             style={{ backgroundImage: `url(${product.imageUrl})` }}
           />
           <div className="space-y-1 overflow-hidden">
-            <p className="text-[10px] font-black text-primary-dark uppercase tracking-widest truncate">{product.supplier}</p>
+            <p className="text-[10px] font-black text-primary-dark uppercase tracking-widest truncate">{product.supplierName}</p>
             <h3 className="text-lg font-black text-primary-text leading-tight truncate">₩{product.price.toLocaleString()}</h3>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 rounded-full">
               <span className="size-2 rounded-full bg-primary-dark" />

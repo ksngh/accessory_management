@@ -2,8 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { MOCK_PRODUCTS, MOCK_SUPPLIERS, COLORS, RING_SIZES } from '../constants';
-import { Product, Color, RingSize } from '../types';
+import { getProducts } from '../src/api/products';
+import { getSuppliers } from '../src/api/suppliers';
+import { createOrder } from '../src/api/orders';
+import { Product, Supplier, Color, RingSize } from '../types';
+import { COLORS, RING_SIZES } from '../constants';
 
 interface OrderRow {
   rowId: string;
@@ -15,7 +18,9 @@ interface OrderRow {
 
 const PurchaseOrder: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedSupplier, setSelectedSupplier] = useState<string>(MOCK_SUPPLIERS[0]?.name ?? '');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
   const [rows, setRows] = useState<OrderRow[]>([
     { rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }
   ]);
@@ -31,13 +36,42 @@ const PurchaseOrder: React.FC = () => {
   };
 
   useEffect(() => {
-    const filtered = MOCK_PRODUCTS.filter(p => p.supplier === selectedSupplier);
+    const fetchSuppliersData = async () => {
+      try {
+        const suppliersData = await getSuppliers();
+        setSuppliers(suppliersData);
+        if (suppliersData.length > 0) {
+          setSelectedSupplier(suppliersData[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch suppliers", error);
+      }
+    };
+    fetchSuppliersData();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSupplier) return;
+
+    const fetchProducts = async () => {
+      try {
+        const productsData = await getProducts({ supplierId: selectedSupplier });
+        setProducts(productsData);
+      } catch (error) {
+        console.error("Failed to fetch products", error);
+        setProducts([]);
+      }
+    };
+    fetchProducts();
+  }, [selectedSupplier]);
+
+  useEffect(() => {
     const chunked: Product[][] = [];
-    for (let i = 0; i < filtered.length; i += 6) {
-      chunked.push(filtered.slice(i, i + 6));
+    for (let i = 0; i < products.length; i += 6) {
+      chunked.push(products.slice(i, i + 6));
     }
     setPickerRows(chunked);
-  }, [selectedSupplier, isProductPickerOpen]);
+  }, [products]);
 
   const addRow = () => {
     setRows([...rows, { rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
@@ -116,6 +150,41 @@ const PurchaseOrder: React.FC = () => {
     }
   };
 
+  const handleSave = async () => {
+    const orderItems = rows.flatMap(row => {
+      if (!row.product) return [];
+      return Object.entries(row.quantities)
+        .filter(([, quantity]) => quantity > 0)
+        .map(([key, quantity]) => {
+          const parts = key.split('-');
+          return {
+            productId: row.product!.id,
+            quantity,
+            selectedColor: parts[0] as Color,
+            selectedSize: parts.length > 1 ? parts[1] as RingSize : undefined,
+          };
+        });
+    });
+
+    if (orderItems.length === 0) {
+      alert('발주할 상품이 없습니다.');
+      return;
+    }
+
+    const data = {
+      supplierId: selectedSupplier,
+      items: orderItems,
+    };
+
+    try {
+      await createOrder(data);
+      navigate('/orders');
+    } catch (error) {
+      console.error("Failed to create order", error);
+      alert('발주 생성에 실패했습니다.');
+    }
+  };
+
   const totalItems = rows.reduce((sum, row) => sum + Object.values(row.quantities).reduce((s, q) => Number(s) + Number(q), 0), 0);
   const totalAmount = rows.reduce((sum, row) => {
     if (!row.product) return sum;
@@ -136,8 +205,8 @@ const PurchaseOrder: React.FC = () => {
             }}
             className="w-full h-14 pl-5 pr-10 rounded-2xl border border-primary/30 focus:border-primary-dark focus:ring-2 focus:ring-primary/20 text-sm bg-white font-bold shadow-sm transition-all outline-none"
           >
-            {MOCK_SUPPLIERS.map(s => (
-              <option key={s.id} value={s.name}>{s.name}</option>
+            {suppliers.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
 
@@ -324,7 +393,7 @@ const PurchaseOrder: React.FC = () => {
           </div>
           <button 
             disabled={totalItems === 0}
-            onClick={() => navigate('/orders')}
+            onClick={handleSave}
             className={`w-full h-16 font-black text-lg rounded-[1.5rem] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 ${
               totalItems === 0 ? 'bg-gray-100 text-gray-400' : 'bg-primary text-primary-text shadow-primary/40'
             }`}
@@ -343,7 +412,7 @@ const PurchaseOrder: React.FC = () => {
                 <h4 className="font-black text-2xl text-gray-800 tracking-tight">상품 카탈로그</h4>
                 <div className="flex items-center gap-1.5">
                    <div className="size-2 rounded-full bg-green-500 animate-pulse" />
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{selectedSupplier}</p>
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{suppliers.find(s => s.id === selectedSupplier)?.name}</p>
                 </div>
               </div>
               <button onClick={() => setIsProductPickerOpen(false)} className="size-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 active:rotate-90 transition-all duration-300">

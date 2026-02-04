@@ -1,26 +1,21 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { MOCK_ORDERS, MOCK_SUPPLIERS, INITIAL_CATEGORIES, COLORS } from '../constants';
-import { OrderItem, Color } from '../types';
-
-interface ProductStat {
-  id: string;
-  name: string;
-  imageUrl: string;
-  category: string;
-  supplier: string;
-  totalQty: number;
-  unitPrice: number;
-  totalAmount: number;
-}
+import { getProductStatistics } from '../src/api/statistics';
+import { getSuppliers } from '../src/api/suppliers';
+import { getCategories } from '../src/api/categories';
+import { ProductStat, ProductStatisticsResponse, Supplier, Category, Color } from '../types';
+import { COLORS } from '../constants';
 
 const Statistics: React.FC = () => {
+  const currentYear = new Date().getFullYear().toString();
+  const currentMonth = (new Date().getMonth() + 1).toString();
+
   // --- States for Range ---
-  const [startYear, setStartYear] = useState<string>('');
-  const [startMonth, setStartMonth] = useState<string>('');
-  const [endYear, setEndYear] = useState<string>('');
-  const [endMonth, setEndMonth] = useState<string>('');
+  const [startYear, setStartYear] = useState<string>(currentYear);
+  const [startMonth, setStartMonth] = useState<string>('1');
+  const [endYear, setEndYear] = useState<string>(currentYear);
+  const [endMonth, setEndMonth] = useState<string>(currentMonth);
 
   // --- States for Filters ---
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
@@ -28,84 +23,67 @@ const Statistics: React.FC = () => {
   const [colorFilter, setColorFilter] = useState<string | 'all'>('all');
   const [sortBy, setSortBy] = useState<'amount' | 'quantity'>('quantity');
 
-  // --- Extract Date Structure from Mock Data ---
-  const dateStructure = useMemo(() => {
-    const structure: Record<string, string[]> = {};
-    MOCK_ORDERS.forEach(order => {
-      const [year, month] = order.date.split('.').slice(0, 2);
-      const y = year.trim();
-      const m = month.trim();
-      if (!structure[y]) structure[y] = [];
-      if (!structure[y].includes(m)) structure[y].push(m);
-    });
-    // Sort years and months
-    const sortedYears = Object.keys(structure).sort((a, b) => b.localeCompare(a));
-    sortedYears.forEach(y => structure[y].sort((a, b) => b.localeCompare(a)));
-    return { years: sortedYears, structure };
+  const [statsData, setStatsData] = useState<ProductStatisticsResponse | null>(null);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [suppliersData, categoriesData] = await Promise.all([
+          getSuppliers(),
+          getCategories(),
+        ]);
+        setSuppliers(suppliersData);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error("Failed to fetch initial data", error);
+      }
+    };
+    fetchInitialData();
   }, []);
 
-  // --- Helper: Date to Value for comparison ---
+  const years = useMemo(() => {
+    const start = 2020;
+    const end = new Date().getFullYear();
+    return Array.from({ length: end - start + 1 }, (_, i) => (end - i).toString());
+  }, []);
+
+  const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
+
   const dateToVal = (y: string, m: string) => (parseInt(y) * 12) + parseInt(m);
-
-  // --- Core Analytics Logic ---
-  const productStats = useMemo(() => {
-    if (!startYear || !startMonth || !endYear || !endMonth) return [];
-
-    const startVal = dateToVal(startYear, startMonth);
-    const endVal = dateToVal(endYear, endMonth);
-    
-    // 유효하지 않은 범위 처리 (시작이 종료보다 클 경우 빈 배열)
-    if (startVal > endVal) return [];
-
-    const stats: Record<string, ProductStat> = {};
-
-    MOCK_ORDERS.forEach(order => {
-      const [y, m] = order.date.split('.').slice(0, 2);
-      const currentVal = dateToVal(y.trim(), m.trim());
-
-      // 1. 기간 필터
-      if (currentVal >= startVal && currentVal <= endVal && order.items) {
-        order.items.forEach((item: OrderItem) => {
-          // 2. 거래처 필터
-          if (supplierFilter !== 'all' && item.supplier !== supplierFilter) return;
-          // 3. 카테고리 필터
-          if (categoryFilter !== 'all' && item.category !== categoryFilter) return;
-          // 4. 색상 필터
-          if (colorFilter !== 'all' && item.selectedColor !== colorFilter) return;
-
-          if (!stats[item.id]) {
-            stats[item.id] = {
-              id: item.id,
-              name: item.name,
-              imageUrl: item.imageUrl,
-              category: item.category,
-              supplier: item.supplier,
-              totalQty: 0,
-              unitPrice: item.price,
-              totalAmount: 0
-            };
-          }
-          stats[item.id].totalQty += item.quantity;
-          stats[item.id].totalAmount += (item.price * item.quantity);
-        });
-      }
-    });
-
-    // --- Sort Result ---
-    return Object.values(stats).sort((a, b) => {
-      if (sortBy === 'amount') return b.totalAmount - a.totalAmount;
-      return b.totalQty - a.totalQty;
-    });
-  }, [startYear, startMonth, endYear, endMonth, supplierFilter, categoryFilter, colorFilter, sortBy]);
-
-  const totals = useMemo(() => {
-    return productStats.reduce((acc, cur) => ({
-      qty: acc.qty + cur.totalQty,
-      amount: acc.amount + cur.totalAmount
-    }), { qty: 0, amount: 0 });
-  }, [productStats]);
-
   const isRangeValid = startYear && startMonth && endYear && endMonth && (dateToVal(startYear, startMonth) <= dateToVal(endYear, endMonth));
+
+  useEffect(() => {
+    if (!isRangeValid) {
+      setStatsData(null);
+      return;
+    }
+
+    const fetchStats = async () => {
+      setIsLoading(true);
+      try {
+        const params: any = {
+          startYear, startMonth, endYear, endMonth, sortBy,
+        };
+        if (supplierFilter !== 'all') params.supplierId = supplierFilter;
+        if (categoryFilter !== 'all') params.category = categoryFilter;
+        if (colorFilter !== 'all') params.color = colorFilter;
+        
+        const data = await getProductStatistics(params);
+        setStatsData(data);
+      } catch (error) {
+        console.error("Failed to fetch statistics", error);
+        setStatsData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [startYear, startMonth, endYear, endMonth, supplierFilter, categoryFilter, colorFilter, sortBy, isRangeValid]);
+  
 
   return (
     <Layout title="종합 발주 통계" showBack>
@@ -127,15 +105,13 @@ const Statistics: React.FC = () => {
                     value={startYear} onChange={e => setStartYear(e.target.value)}
                     className="flex-1 h-11 px-2 rounded-xl border border-gray-100 bg-gray-50 text-[11px] font-black outline-none"
                   >
-                    <option value="">년도</option>
-                    {dateStructure.years.map(y => <option key={y} value={y}>{y}년</option>)}
+                    {years.map(y => <option key={y} value={y}>{y}년</option>)}
                   </select>
                   <select 
                     value={startMonth} onChange={e => setStartMonth(e.target.value)}
                     className="flex-1 h-11 px-2 rounded-xl border border-gray-100 bg-gray-50 text-[11px] font-black outline-none"
                   >
-                    <option value="">월</option>
-                    {startYear && dateStructure.structure[startYear]?.map(m => <option key={m} value={m}>{parseInt(m)}월</option>)}
+                    {months.map(m => <option key={m} value={m}>{m}월</option>)}
                   </select>
                 </div>
               </div>
@@ -147,15 +123,13 @@ const Statistics: React.FC = () => {
                     value={endYear} onChange={e => setEndYear(e.target.value)}
                     className="flex-1 h-11 px-2 rounded-xl border border-gray-100 bg-gray-50 text-[11px] font-black outline-none"
                   >
-                    <option value="">년도</option>
-                    {dateStructure.years.map(y => <option key={y} value={y}>{y}년</option>)}
+                    {years.map(y => <option key={y} value={y}>{y}년</option>)}
                   </select>
                   <select 
                     value={endMonth} onChange={e => setEndMonth(e.target.value)}
                     className="flex-1 h-11 px-2 rounded-xl border border-gray-100 bg-gray-50 text-[11px] font-black outline-none"
                   >
-                    <option value="">월</option>
-                    {endYear && dateStructure.structure[endYear]?.map(m => <option key={m} value={m}>{parseInt(m)}월</option>)}
+                    {months.map(m => <option key={m} value={m}>{m}월</option>)}
                   </select>
                 </div>
               </div>
@@ -180,14 +154,14 @@ const Statistics: React.FC = () => {
               className="h-11 px-2 rounded-xl border-none bg-white text-[10px] font-black shadow-sm focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="all">모든 거래처</option>
-              {MOCK_SUPPLIERS.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             <select 
               value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
               className="h-11 px-2 rounded-xl border-none bg-white text-[10px] font-black shadow-sm focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="all">모든 품목</option>
-              {INITIAL_CATEGORIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
             <select 
               value={colorFilter} onChange={e => setColorFilter(e.target.value as Color | 'all')}
@@ -220,6 +194,16 @@ const Statistics: React.FC = () => {
             <span className="material-symbols-outlined text-6xl text-gray-100">monitoring</span>
             <p className="text-sm font-black text-gray-300 italic uppercase">Please set a valid period</p>
           </div>
+        ) : isLoading ? (
+          <div className="py-24 text-center space-y-4">
+            <span className="material-symbols-outlined text-6xl text-gray-200 animate-spin">sync</span>
+             <p className="text-sm font-black text-gray-300 italic uppercase">Loading Analytics...</p>
+          </div>
+        ) : !statsData ? (
+          <div className="py-24 text-center space-y-4">
+            <span className="material-symbols-outlined text-6xl text-gray-100">error_outline</span>
+            <p className="text-sm font-black text-gray-300 italic uppercase">Could not load data</p>
+          </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* 총 요약 카드 */}
@@ -231,7 +215,7 @@ const Statistics: React.FC = () => {
                 <div className="flex justify-between items-center border-b border-white/10 pb-4">
                   <div className="space-y-0.5">
                     <p className="text-[9px] font-black text-primary/40 uppercase tracking-[0.2em]">Selected Range</p>
-                    <p className="text-xs font-bold text-white opacity-80">{startYear}.{startMonth} ~ {endYear}.{endMonth}</p>
+                    <p className="text-xs font-bold text-white opacity-80">{statsData.range.start} ~ {statsData.range.end}</p>
                   </div>
                   <div className="text-right">
                     <span className="text-[9px] font-black text-primary uppercase tracking-widest px-2 py-1 bg-white/10 rounded-lg">Realtime Analytics</span>
@@ -240,11 +224,11 @@ const Statistics: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-primary/40 uppercase">Total Volume</p>
-                    <p className="text-2xl font-black text-white">{totals.qty.toLocaleString()}<span className="text-[10px] opacity-40 ml-1">PCS</span></p>
+                    <p className="text-2xl font-black text-white">{statsData.totals.qty.toLocaleString()}<span className="text-[10px] opacity-40 ml-1">PCS</span></p>
                   </div>
                   <div className="space-y-1 text-right">
                     <p className="text-[9px] font-black text-primary/40 uppercase">Total Valuation</p>
-                    <p className="text-2xl font-black text-primary">₩{totals.amount.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-primary">₩{statsData.totals.amount.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -257,11 +241,11 @@ const Statistics: React.FC = () => {
                   <div className="size-1.5 rounded-full bg-primary-dark" />
                   <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">품목별 통계 리스트</h3>
                 </div>
-                <span className="text-[10px] font-bold text-gray-300">{productStats.length}개 품목 검색됨</span>
+                <span className="text-[10px] font-bold text-gray-300">{statsData.items.length}개 품목 검색됨</span>
               </div>
 
               <div className="space-y-4">
-                {productStats.map((stat, idx) => (
+                {statsData.items.map((stat, idx) => (
                   <div 
                     key={stat.id} 
                     className="bg-white p-5 rounded-[2.5rem] border border-primary/5 shadow-sm space-y-5 animate-in fade-in"
@@ -279,7 +263,7 @@ const Statistics: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className="text-[9px] font-black text-primary-dark uppercase tracking-tighter bg-primary/10 px-2 py-0.5 rounded-md">{stat.category}</span>
-                          <span className="text-[9px] font-bold text-gray-300 truncate max-w-[100px]">{stat.supplier}</span>
+                          <span className="text-[9px] font-bold text-gray-300 truncate max-w-[100px]">{stat.supplierName}</span>
                         </div>
                         <h4 className="text-sm font-black text-gray-800 truncate">{stat.name}</h4>
                         <p className="text-[9px] font-bold text-gray-300 uppercase">Product ID: {stat.id}</p>
@@ -305,7 +289,7 @@ const Statistics: React.FC = () => {
                   </div>
                 ))}
 
-                {productStats.length === 0 && (
+                {statsData.items.length === 0 && (
                    <div className="py-20 text-center flex flex-col items-center gap-4 animate-in fade-in">
                       <span className="material-symbols-outlined text-4xl text-gray-200">folder_off</span>
                       <p className="text-xs text-gray-300 font-bold italic uppercase tracking-tighter">

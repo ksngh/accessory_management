@@ -2,12 +2,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { MOCK_PRODUCTS, MOCK_SUPPLIERS } from '../constants';
-import { Product } from '../types';
+import { getProducts } from '../src/api/products';
+import { getSuppliers } from '../src/api/suppliers';
+import { Product, Supplier } from '../types';
 
 const Inventory: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedSupplier, setSelectedSupplier] = useState(MOCK_SUPPLIERS[0].name);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState('');
   const [rows, setRows] = useState<Product[][]>([]);
   
   const dragItem = useRef<{ rowIndex: number; colIndex: number } | null>(null);
@@ -15,14 +18,42 @@ const Inventory: React.FC = () => {
   const scrollContainerRef = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
-    const filtered = MOCK_PRODUCTS.filter(p => p.supplier === selectedSupplier);
+    const fetchSuppliersData = async () => {
+      try {
+        const suppliersData = await getSuppliers();
+        setSuppliers(suppliersData);
+        if (suppliersData.length > 0) {
+          setSelectedSupplier(suppliersData[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch suppliers", error);
+      }
+    };
+    fetchSuppliersData();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSupplier) return;
+
+    const fetchProducts = async () => {
+      try {
+        const productsData = await getProducts({ supplierId: selectedSupplier });
+        setProducts(productsData);
+      } catch (error) {
+        console.error("Failed to fetch products", error);
+      }
+    };
+    fetchProducts();
+  }, [selectedSupplier]);
+
+  useEffect(() => {
     const chunked: Product[][] = [];
-    for (let i = 0; i < filtered.length; i += 6) {
-      chunked.push(filtered.slice(i, i + 6));
+    for (let i = 0; i < products.length; i += 6) {
+      chunked.push(products.slice(i, i + 6));
     }
     if (chunked.length === 0) chunked.push([]);
     setRows(chunked);
-  }, [selectedSupplier]);
+  }, [products]);
 
   const addRow = () => {
     setRows(prev => [...prev, []]);
@@ -64,8 +95,8 @@ const Inventory: React.FC = () => {
             onChange={(e) => setSelectedSupplier(e.target.value)}
             className="w-full h-12 pl-4 pr-10 rounded-2xl border border-primary/30 bg-white font-bold text-sm text-primary-text focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
           >
-            {MOCK_SUPPLIERS.map(s => (
-              <option key={s.id} value={s.name}>{s.name}</option>
+            {suppliers.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </div>

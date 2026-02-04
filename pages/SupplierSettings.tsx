@@ -1,14 +1,31 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { MOCK_SUPPLIERS } from '../constants';
 import { Supplier } from '../types';
+import { getSuppliers, addSupplier, updateSupplier, deleteSupplier } from '../src/api/suppliers';
 
 const SupplierSettings: React.FC = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [newName, setNewName] = useState('');
+
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getSuppliers();
+        setSuppliers(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSuppliers();
+  }, []);
 
   const handleAdd = () => {
     setEditingSupplier(null);
@@ -22,25 +39,32 @@ const SupplierSettings: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('정말로 이 거래처를 삭제하시겠습니까? 관련 상품의 거래처 정보가 소실될 수 있습니다.')) {
-      setSuppliers(suppliers.filter(s => s.id !== id));
+      try {
+        await deleteSupplier(id);
+        setSuppliers(suppliers.filter(s => s.id !== id));
+      } catch (err) {
+        alert('삭제에 실패했습니다.');
+      }
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!newName.trim()) return;
 
-    if (editingSupplier) {
-      setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, name: newName } : s));
-    } else {
-      const newSupplier: Supplier = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: newName
-      };
-      setSuppliers([...suppliers, newSupplier]);
+    try {
+      if (editingSupplier) {
+        const updated = await updateSupplier(editingSupplier.id, newName);
+        setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? updated : s));
+      } else {
+        const newSupplier = await addSupplier(newName);
+        setSuppliers([...suppliers, newSupplier]);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      alert('저장에 실패했습니다.');
     }
-    setIsModalOpen(false);
   };
 
   return (
@@ -60,42 +84,58 @@ const SupplierSettings: React.FC = () => {
           </button>
         </div>
 
-        <div className="space-y-4">
-          {suppliers.map(s => (
-            <div key={s.id} className="bg-white p-5 rounded-[2rem] border border-primary/10 shadow-lg shadow-primary/5 flex items-center justify-between animate-in fade-in">
-              <div className="flex items-center gap-4">
-                <div className="size-12 rounded-full bg-primary/20 flex items-center justify-center text-primary-dark">
-                  <span className="material-symbols-outlined text-2xl font-bold">domain</span>
-                </div>
-                <div>
-                  <p className="font-black text-primary-text text-base leading-tight">{s.name}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-1">
-                <button 
-                  onClick={() => handleEdit(s)}
-                  className="size-10 flex items-center justify-center text-gray-300 hover:text-primary-dark transition-colors"
-                >
-                  <span className="material-symbols-outlined">edit</span>
-                </button>
-                <button 
-                  onClick={() => handleDelete(s.id)}
-                  className="size-10 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors"
-                >
-                  <span className="material-symbols-outlined">delete_forever</span>
-                </button>
-              </div>
-            </div>
-          ))}
+        {isLoading && (
+          <div className="py-20 flex flex-col items-center justify-center text-gray-300 space-y-4">
+            <span className="material-symbols-outlined text-6xl opacity-20 animate-spin">sync</span>
+            <p className="text-sm font-black italic">로딩 중...</p>
+          </div>
+        )}
 
-          {suppliers.length === 0 && (
-            <div className="py-20 flex flex-col items-center justify-center text-gray-300 space-y-4">
-              <span className="material-symbols-outlined text-6xl opacity-20">storefront</span>
-              <p className="text-sm font-black italic">등록된 거래처가 없습니다.</p>
-            </div>
-          )}
-        </div>
+        {error && (
+          <div className="py-20 flex flex-col items-center justify-center text-red-400 space-y-4">
+            <span className="material-symbols-outlined text-6xl opacity-50">error</span>
+            <p className="text-sm font-black italic">{error}</p>
+          </div>
+        )}
+
+        {!isLoading && !error && (
+          <div className="space-y-4">
+            {suppliers.map(s => (
+              <div key={s.id} className="bg-white p-5 rounded-[2rem] border border-primary/10 shadow-lg shadow-primary/5 flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-4">
+                  <div className="size-12 rounded-full bg-primary/20 flex items-center justify-center text-primary-dark">
+                    <span className="material-symbols-outlined text-2xl font-bold">domain</span>
+                  </div>
+                  <div>
+                    <p className="font-black text-primary-text text-base leading-tight">{s.name}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => handleEdit(s)}
+                    className="size-10 flex items-center justify-center text-gray-300 hover:text-primary-dark transition-colors"
+                  >
+                    <span className="material-symbols-outlined">edit</span>
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(s.id)}
+                    className="size-10 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors"
+                  >
+                    <span className="material-symbols-outlined">delete_forever</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {suppliers.length === 0 && (
+              <div className="py-20 flex flex-col items-center justify-center text-gray-300 space-y-4">
+                <span className="material-symbols-outlined text-6xl opacity-20">storefront</span>
+                <p className="text-sm font-black italic">등록된 거래처가 없습니다.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 추가/수정 모달 */}

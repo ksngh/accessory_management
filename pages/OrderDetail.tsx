@@ -1,16 +1,27 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { MOCK_ORDERS } from '../constants';
-import { OrderStatus, OrderItem } from '../types';
+import { getOrder, updateOrderStatus } from '../src/api/orders';
+import { Order, OrderStatus, OrderItem } from '../types';
 
 const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const order = MOCK_ORDERS.find(o => o.id === id);
+  const [order, setOrder] = useState<Order | null>(null);
 
-  const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order?.status || OrderStatus.PENDING);
+  useEffect(() => {
+    if (!id) return;
+    const fetchOrder = async () => {
+      try {
+        const orderData = await getOrder(id);
+        setOrder(orderData);
+      } catch (error) {
+        console.error("Failed to fetch order", error);
+      }
+    };
+    fetchOrder();
+  }, [id]);
 
   // 상품별로 그룹화 (SKU 기준)
   const groupedItems = useMemo(() => {
@@ -48,12 +59,14 @@ const OrderDetail: React.FC = () => {
     }
   };
 
-  const toggleStatus = () => {
-    const nextStatus = currentStatus === OrderStatus.PENDING ? OrderStatus.COMPLETED : OrderStatus.PENDING;
-    setCurrentStatus(nextStatus);
-    const orderIdx = MOCK_ORDERS.findIndex(o => o.id === id);
-    if (orderIdx !== -1) {
-      MOCK_ORDERS[orderIdx].status = nextStatus;
+  const toggleStatus = async () => {
+    const nextStatus = order.status === OrderStatus.PENDING ? OrderStatus.COMPLETED : OrderStatus.PENDING;
+    try {
+      const updatedOrder = await updateOrderStatus(order.id, nextStatus);
+      setOrder(updatedOrder);
+    } catch (error) {
+      console.error("Failed to update order status", error);
+      alert('상태 변경에 실패했습니다.');
     }
   };
 
@@ -70,12 +83,12 @@ const OrderDetail: React.FC = () => {
             
             <button 
               onClick={toggleStatus}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-black transition-all active:scale-95 shadow-sm ${getStatusColor(currentStatus)}`}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-black transition-all active:scale-95 shadow-sm ${getStatusColor(order.status)}`}
             >
               <span className="material-symbols-outlined text-[14px]">
-                {currentStatus === OrderStatus.COMPLETED ? 'check_circle' : 'schedule'}
+                {order.status === OrderStatus.COMPLETED ? 'check_circle' : 'schedule'}
               </span>
-              {currentStatus}
+              {order.status}
               <span className="material-symbols-outlined text-[12px] opacity-50 ml-1">sync_alt</span>
             </button>
           </div>
@@ -83,11 +96,11 @@ const OrderDetail: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 py-5 border-t border-gray-50">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">발주 일시</span>
-              <p className="text-xs font-black text-gray-700">{order.date}</p>
+              <p className="text-xs font-black text-gray-700">{new Date(order.date).toLocaleString()}</p>
             </div>
             <div className="space-y-1 text-right border-l border-gray-50 pl-4">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">거래처명</span>
-              <p className="text-xs font-black text-primary-text">{order.supplier}</p>
+              <p className="text-xs font-black text-primary-text">{order.supplierName}</p>
             </div>
           </div>
         </section>

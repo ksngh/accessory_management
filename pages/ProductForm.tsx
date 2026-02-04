@@ -1,24 +1,53 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { INITIAL_CATEGORIES, MOCK_SUPPLIERS } from '../constants';
+import { getCategories } from '../src/api/categories';
+import { getSuppliers } from '../src/api/suppliers';
+import { createBulkProducts } from '../src/api/products';
+import { Category, Supplier } from '../types';
 
 interface BulkProductEntry {
   id: string;
   image: string | null;
   category: string;
   price: string;
+  name: string;
+  sku: string;
 }
 
 const ProductForm: React.FC = () => {
   const navigate = useNavigate();
-  const [supplier, setSupplier] = useState(MOCK_SUPPLIERS[0].name);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [supplier, setSupplier] = useState('');
   const [entries, setEntries] = useState<BulkProductEntry[]>([]);
   
   // 일괄 설정을 위한 상태
-  const [bulkCategory, setBulkCategory] = useState(INITIAL_CATEGORIES[0].name);
+  const [bulkCategory, setBulkCategory] = useState('');
   const [bulkPrice, setBulkPrice] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [suppliersData, categoriesData] = await Promise.all([
+          getSuppliers(),
+          getCategories(),
+        ]);
+        setSuppliers(suppliersData);
+        setCategories(categoriesData);
+        if (suppliersData.length > 0) {
+          setSupplier(suppliersData[0].id);
+        }
+        if (categoriesData.length > 0) {
+          setBulkCategory(categoriesData[0].name);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data", error);
+      }
+    };
+    fetchData();
+  }, []);
 
   const removeEntry = (id: string) => {
     setEntries(entries.filter(e => e.id !== id));
@@ -47,12 +76,15 @@ const ProductForm: React.FC = () => {
     fileList.forEach((file) => {
       const reader = new window.FileReader();
       reader.onloadend = () => {
+        const name = file.name.split('.')[0];
         loadedEntries.push({
           id: Math.random().toString(36).substr(2, 9),
           image: reader.result ? String(reader.result) : null,
           category: bulkCategory,
-          price: bulkPrice
-        });
+          price: bulkPrice,
+          name: name,
+          sku: name.toUpperCase(),
+        } as any);
         count++;
         if (count === fileList.length) {
           setEntries(prev => [...prev, ...loadedEntries]);
@@ -60,6 +92,26 @@ const ProductForm: React.FC = () => {
       };
       reader.readAsDataURL(file as Blob);
     });
+  };
+
+  const handleSave = async () => {
+    const data = {
+      supplierId: supplier,
+      items: entries.map(entry => ({
+        category: entry.category,
+        price: parseFloat(entry.price),
+        imageBase64: entry.image,
+        name: (entry as any).name,
+        sku: (entry as any).sku,
+      }))
+    };
+    try {
+      await createBulkProducts(data);
+      navigate('/inventory');
+    } catch (error) {
+      console.error("Failed to create products", error);
+      alert('상품 등록에 실패했습니다.');
+    }
   };
 
   const triggerFilePicker = () => {
@@ -77,8 +129,8 @@ const ProductForm: React.FC = () => {
             onChange={(e) => setSupplier(e.target.value)}
             className="w-full h-14 pl-5 pr-10 rounded-2xl border border-primary/30 focus:border-primary-dark focus:ring-2 focus:ring-primary/20 text-base bg-white font-bold shadow-sm transition-all outline-none"
           >
-            {MOCK_SUPPLIERS.map(s => (
-              <option key={s.id} value={s.name}>{s.name}</option>
+            {suppliers.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </section>
@@ -98,7 +150,7 @@ const ProductForm: React.FC = () => {
                   onChange={(e) => setBulkCategory(e.target.value)}
                   className="w-full h-11 px-3 rounded-xl border-none bg-white text-sm font-bold shadow-sm focus:ring-2 focus:ring-primary-dark"
                 >
-                  {INITIAL_CATEGORIES.map(cat => (
+                  {categories.map(cat => (
                     <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
@@ -161,7 +213,7 @@ const ProductForm: React.FC = () => {
                       onChange={(e) => updateEntry(entry.id, { category: e.target.value })}
                       className="w-full h-10 px-3 rounded-xl border-none bg-gray-50 text-sm font-bold focus:ring-1 focus:ring-primary-dark"
                     >
-                      {INITIAL_CATEGORIES.map(cat => (
+                      {categories.map(cat => (
                         <option key={cat.id} value={cat.name}>{cat.name}</option>
                       ))}
                     </select>
@@ -195,7 +247,7 @@ const ProductForm: React.FC = () => {
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-6 z-[100]">
           <button 
             disabled={entries.length === 0}
-            onClick={() => navigate('/inventory')}
+            onClick={handleSave}
             className={`w-full h-15 font-black text-lg rounded-[1.5rem] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 ${
               entries.length === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary text-primary-text'
             }`}

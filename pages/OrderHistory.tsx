@@ -1,12 +1,25 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { MOCK_ORDERS } from '../constants';
-import { OrderStatus } from '../types';
+import { getOrders } from '../src/api/orders';
+import { Order, OrderStatus } from '../types';
 
 const OrderHistory: React.FC = () => {
   const navigate = useNavigate();
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const ordersData = await getOrders();
+        setOrders(ordersData);
+      } catch (error) {
+        console.error("Failed to fetch orders", error);
+      }
+    };
+    fetchOrders();
+  }, []);
   
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
@@ -51,7 +64,7 @@ const OrderHistory: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          {MOCK_ORDERS.map(order => (
+          {orders.map(order => (
             <div 
               key={order.id} 
               onClick={() => navigate(`/orders/${order.id}`)}
@@ -61,7 +74,7 @@ const OrderHistory: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <span className="text-xs font-black text-primary-dark">{order.orderNumber}</span>
-                    <span className="text-[10px] text-gray-400 font-bold">{order.date}</span>
+                    <span className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleString()}</span>
                   </div>
                   <span className={`text-[10px] font-black px-3 py-1.5 rounded-full border ${getStatusColor(order.status)} border-current opacity-80`}>
                     {order.status}
@@ -73,7 +86,7 @@ const OrderHistory: React.FC = () => {
                     <span className="material-symbols-outlined text-2xl">storefront</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-gray-800 truncate">{order.supplier}</p>
+                    <p className="text-sm font-black text-gray-800 truncate">{order.supplierName}</p>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{order.itemCount} ITEMS ORDERED</p>
                   </div>
                 </div>

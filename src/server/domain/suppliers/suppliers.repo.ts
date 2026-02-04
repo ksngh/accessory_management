@@ -24,5 +24,5 @@ export const updateSupplier = async (id: string, name: string): Promise<Supplier
 
 export const deleteSupplier = async (id: string): Promise<boolean> => {
   const result = await pool.query('DELETE FROM suppliers WHERE id = $1', [id]);
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 };

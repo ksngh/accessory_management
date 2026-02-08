@@ -39,7 +39,7 @@ const SupplierSettings: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (confirm('정말로 이 거래처를 삭제하시겠습니까? 관련 상품의 거래처 정보가 소실될 수 있습니다.')) {
       try {
         await deleteSupplier(id);

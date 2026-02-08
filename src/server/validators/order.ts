@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { OrderStatus } from '../domain/orders/orders.enums';
 
 export const orderCreateSchema = z.object({
-  supplierId: z.string(),
+  supplierId: z.number(),
   items: z.array(z.object({
-    productId: z.string(),
+    productId: z.number(),
     quantity: z.number().int().min(1),
     selectedColor: z.string(),
     selectedSize: z.string().optional(),

@@ -5,7 +5,10 @@ export const productStatisticsSchema = z.object({
   startMonth: z.string(),
   endYear: z.string(),
   endMonth: z.string(),
-  supplierId: z.string().optional(),
+  supplierId: z.preprocess(
+    (val) => (val ? parseInt(String(val), 10) : undefined),
+    z.number().optional()
+  ),
   category: z.string().optional(),
   color: z.string().optional(),
   sortBy: z.enum(['quantity', 'amount']).optional(),

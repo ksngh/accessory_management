@@ -1,15 +1,15 @@
 import { fetcher } from './fetcher';
 import type { Product } from '../types';
 
-export const getProducts = (params?: { supplierId?: string, category?: string }): Promise<Product[]> => {
+export const getProducts = (params?: { supplierId?: number, category?: string }): Promise<Product[]> => {
   const usp = new URLSearchParams();
-  if (params?.supplierId) usp.set('supplierId', params.supplierId);
+  if (params?.supplierId) usp.set('supplierId', String(params.supplierId));
   if (params?.category) usp.set('category', params.category);
   const queryString = usp.toString();
   return fetcher<Product[]>(`/products${queryString ? `?${queryString}` : ''}`);
 };
 
-export const getProduct = (id: string): Promise<Product> => {
+export const getProduct = (id: number): Promise<Product> => {
   return fetcher<Product>(`/products/${id}`);
 };
 

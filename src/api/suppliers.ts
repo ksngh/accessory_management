@@ -13,7 +13,7 @@ export const addSupplier = (name: string): Promise<Supplier> => {
   });
 };
 
-export const updateSupplier = (id: string, name: string): Promise<Supplier> => {
+export const updateSupplier = (id: number, name: string): Promise<Supplier> => {
   return fetcher<Supplier>(`/suppliers/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -21,7 +21,7 @@ export const updateSupplier = (id: string, name: string): Promise<Supplier> => {
   });
 };
 
-export const deleteSupplier = (id: string): Promise<void> => {
+export const deleteSupplier = (id: number): Promise<void> => {
   return fetcher<void>(`/suppliers/${id}`, {
     method: 'DELETE',
   });

@@ -2,17 +2,17 @@ import { pool } from '@/server/db/client';
 import { Order, OrderItem } from './orders.types';
 import { OrderStatus } from './orders.enums';
 
-export const findOrderById = async (id: string): Promise<Order | null> => {
+export const findOrderById = async (id: number, userId: number): Promise<Order | null> => {
   const orderResult = await pool.query(
     `
       SELECT 
         o.id, o.order_number as "orderNumber", o.date, s.id as "supplierId", s.name as "supplierName", 
-        o.item_count as "itemCount", o.total_amount as "totalAmount", o.status
+        o.item_count as "itemCount", o.total_amount as "totalAmount", o.status, o.user_id as "userId"
       FROM orders o
       JOIN suppliers s ON o.supplier_id = s.id
-      WHERE o.id = $1
+      WHERE o.id = $1 AND o.user_id = $2
     `,
-    [id]
+    [id, userId]
   );
   if (orderResult.rows.length === 0) return null;
 
@@ -37,7 +37,7 @@ export const findOrderById = async (id: string): Promise<Order | null> => {
   return order;
 };
 
-export const findAllOrders = async (filters: { status?: OrderStatus, supplierId?: string }): Promise<Order[]> => {
+export const findAllOrders = async (userId: number, filters: { status?: OrderStatus, supplierId?: number }): Promise<Order[]> => {
   let query = `
     SELECT 
       o.id, o.order_number as "orderNumber", o.date, s.id as "supplierId", s.name as "supplierName", 
@@ -45,22 +45,19 @@ export const findAllOrders = async (filters: { status?: OrderStatus, supplierId?
     FROM orders o
     JOIN suppliers s ON o.supplier_id = s.id
   `;
-  const queryParams: any[] = [];
-  let whereClause = '';
+  const queryParams: any[] = [userId];
+  let whereClause = 'o.user_id = $1';
 
   if (filters.status) {
     queryParams.push(filters.status);
-    whereClause += `o.status = $${queryParams.length}`;
+    whereClause += ` AND o.status = $${queryParams.length}`;
   }
   if (filters.supplierId) {
     queryParams.push(filters.supplierId);
-    if (whereClause) whereClause += ' AND ';
-    whereClause += `o.supplier_id = $${queryParams.length}`;
+    whereClause += ` AND o.supplier_id = $${queryParams.length}`;
   }
 
-  if (whereClause) {
-    query += ' WHERE ' + whereClause;
-  }
+  query += ' WHERE ' + whereClause;
   
   query += ' ORDER BY o.date DESC';
 
@@ -68,7 +65,7 @@ export const findAllOrders = async (filters: { status?: OrderStatus, supplierId?
   return result.rows;
 };
 
-export const createOrder = async (order: any): Promise<Order> => {
+export const createOrder = async (order: any, userId: number): Promise<Order> => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -78,17 +75,20 @@ export const createOrder = async (order: any): Promise<Order> => {
     let itemCount = 0;
 
     for (const item of order.items) {
-      const productResult = await client.query('SELECT price FROM products WHERE id = $1', [item.productId]);
+      const productResult = await client.query('SELECT price FROM products WHERE id = $1 AND user_id = $2', [item.productId, userId]);
+      if (productResult.rows.length === 0) {
+        throw new Error(`Product with ID ${item.productId} not found for this user.`);
+      }
       const productPrice = productResult.rows[0].price;
       totalAmount += productPrice * item.quantity;
       itemCount += item.quantity;
     }
 
     const orderResult = await client.query(
-      `INSERT INTO orders (order_number, supplier_id, item_count, total_amount, status) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING id, order_number as "orderNumber", date, supplier_id as "supplierId", item_count as "itemCount", total_amount as "totalAmount", status`,
-      [orderNumber, order.supplierId, itemCount, totalAmount, OrderStatus.PENDING]
+      `INSERT INTO orders (order_number, supplier_id, item_count, total_amount, status, user_id) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING id, order_number as "orderNumber", date, supplier_id as "supplierId", item_count as "itemCount", total_amount as "totalAmount", status, user_id as "userId"`,
+      [orderNumber, order.supplierId, itemCount, totalAmount, OrderStatus.PENDING, userId]
     );
     const newOrder = orderResult.rows[0];
 
@@ -100,7 +100,7 @@ export const createOrder = async (order: any): Promise<Order> => {
     }
     
     await client.query('COMMIT');
-    return findOrderById(newOrder.id);
+    return findOrderById(newOrder.id, userId);
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;
@@ -109,11 +109,11 @@ export const createOrder = async (order: any): Promise<Order> => {
   }
 };
 
-export const updateOrderStatus = async (id: string, status: OrderStatus): Promise<Order | null> => {
+export const updateOrderStatus = async (id: number, status: OrderStatus, userId: number): Promise<Order | null> => {
   const result = await pool.query(
-    'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *',
-    [status, id]
+    'UPDATE orders SET status = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+    [status, id, userId]
   );
   if (result.rows.length === 0) return null;
-  return findOrderById(id);
+  return findOrderById(id, userId);
 };

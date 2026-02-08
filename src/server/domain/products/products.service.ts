@@ -1,22 +1,30 @@
 import * as repo from './products.repo';
 import { Product } from './products.types';
 import { productBulkCreateSchema } from '@/server/validators/product';
+import { saveBase64Image } from '@/server/utils/file';
 
-export const getProducts = async (filters: { supplierId?: string, category?: string }): Promise<Product[]> => {
-  return await repo.findAllProducts(filters);
+export const getProducts = async (userId: number, filters: { supplierId?: number, category?: string }): Promise<Product[]> => {
+  return await repo.findAllProducts(userId, filters);
 };
 
-export const getProduct = async (id: string): Promise<Product | null> => {
-  return await repo.findProductById(id);
+export const getProduct = async (id: number, userId: number): Promise<Product | null> => {
+  return await repo.findProductById(id, userId);
 };
 
-export const createBulkProducts = async (data: any): Promise<Product[]> => {
+export const createBulkProducts = async (data: any, userId: number): Promise<Product[]> => {
   const validatedData = productBulkCreateSchema.parse(data);
-  // Here you would normally handle image upload (from imageBase64) and get a URL.
-  // For now, we'll assume imageUrl is provided or imageBase64 is a data URL that can be stored directly.
-  const productsToCreate = validatedData.items.map(item => ({
-    ...item,
-    supplierId: validatedData.supplierId,
-  }));
-  return await repo.createBulkProducts(productsToCreate);
+
+  const productsToCreate = validatedData.items.map(item => {
+    const imageUrl = item.imageBase64 ? saveBase64Image(item.imageBase64) : null;
+    return {
+      name: item.name,
+      sku: item.sku,
+      price: item.price,
+      category: item.category,
+      supplierId: validatedData.supplierId,
+      imageUrl: imageUrl,
+    };
+  });
+
+  return await repo.createBulkProducts(productsToCreate, userId);
 };

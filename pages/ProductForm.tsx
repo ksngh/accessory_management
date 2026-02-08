@@ -2,15 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { getCategories } from '../src/api/categories';
 import { getSuppliers } from '../src/api/suppliers';
 import { createBulkProducts } from '../src/api/products';
-import { Category, Supplier } from '../types';
+import { Supplier, Category, CategoryName } from '@/types';
+import { getCategories } from '../src/api/categories';
 
 interface BulkProductEntry {
   id: string;
   image: string | null;
-  category: string;
+  category: CategoryName;
   price: string;
   name: string;
   sku: string;
@@ -19,28 +19,27 @@ interface BulkProductEntry {
 const ProductForm: React.FC = () => {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [supplier, setSupplier] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]); // New state for categories
+  const [supplier, setSupplier] = useState<number>(0);
   const [entries, setEntries] = useState<BulkProductEntry[]>([]);
   
   // 일괄 설정을 위한 상태
-  const [bulkCategory, setBulkCategory] = useState('');
+  const [bulkCategory, setBulkCategory] = useState<CategoryName>(''); // Default to empty string
   const [bulkPrice, setBulkPrice] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [suppliersData, categoriesData] = await Promise.all([
-          getSuppliers(),
-          getCategories(),
-        ]);
+        const suppliersData = await getSuppliers();
         setSuppliers(suppliersData);
-        setCategories(categoriesData);
         if (suppliersData.length > 0) {
           setSupplier(suppliersData[0].id);
         }
+
+        const categoriesData = await getCategories(); // Fetch categories
+        setCategories(categoriesData);
         if (categoriesData.length > 0) {
-          setBulkCategory(categoriesData[0].name);
+          setBulkCategory(categoriesData[0].name); // Set default bulk category
         }
       } catch (error) {
         console.error("Failed to fetch data", error);
@@ -126,7 +125,7 @@ const ProductForm: React.FC = () => {
           <label className="text-[11px] font-black text-primary-text uppercase tracking-widest px-1">거래처 선택</label>
           <select 
             value={supplier}
-            onChange={(e) => setSupplier(e.target.value)}
+            onChange={(e) => setSupplier(parseInt(e.target.value, 10))}
             className="w-full h-14 pl-5 pr-10 rounded-2xl border border-primary/30 focus:border-primary-dark focus:ring-2 focus:ring-primary/20 text-base bg-white font-bold shadow-sm transition-all outline-none"
           >
             {suppliers.map(s => (
@@ -145,9 +144,9 @@ const ProductForm: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-gray-400 ml-1">카테고리</label>
-                <select 
+                <select
                   value={bulkCategory}
-                  onChange={(e) => setBulkCategory(e.target.value)}
+                  onChange={(e) => setBulkCategory(e.target.value as CategoryName)}
                   className="w-full h-11 px-3 rounded-xl border-none bg-white text-sm font-bold shadow-sm focus:ring-2 focus:ring-primary-dark"
                 >
                   {categories.map(cat => (
@@ -210,7 +209,7 @@ const ProductForm: React.FC = () => {
                     <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase">Category</label>
                     <select 
                       value={entry.category}
-                      onChange={(e) => updateEntry(entry.id, { category: e.target.value })}
+                      onChange={(e) => updateEntry(entry.id, { category: e.target.value as CategoryName })}
                       className="w-full h-10 px-3 rounded-xl border-none bg-gray-50 text-sm font-bold focus:ring-1 focus:ring-primary-dark"
                     >
                       {categories.map(cat => (
@@ -260,5 +259,3 @@ const ProductForm: React.FC = () => {
     </Layout>
   );
 };
-
-export default ProductForm;

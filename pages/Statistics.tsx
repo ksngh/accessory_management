@@ -1,11 +1,10 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { getProductStatistics } from '../src/api/statistics';
 import { getSuppliers } from '../src/api/suppliers';
-import { getCategories } from '../src/api/categories';
-import { ProductStat, ProductStatisticsResponse, Supplier, Category, Color } from '../types';
+import { ProductStat, ProductStatisticsResponse, Supplier, Color, Category, CategoryName } from '../types';
 import { COLORS } from '../constants';
+import { getCategories } from '../src/api/categories';
 
 const Statistics: React.FC = () => {
   const currentYear = new Date().getFullYear().toString();
@@ -18,24 +17,23 @@ const Statistics: React.FC = () => {
   const [endMonth, setEndMonth] = useState<string>(currentMonth);
 
   // --- States for Filters ---
-  const [supplierFilter, setSupplierFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [supplierFilter, setSupplierFilter] = useState<string | number>('all');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryName | 'all'>('all');
   const [colorFilter, setColorFilter] = useState<string | 'all'>('all');
   const [sortBy, setSortBy] = useState<'amount' | 'quantity'>('quantity');
 
   const [statsData, setStatsData] = useState<ProductStatisticsResponse | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]); // New state for categories
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [suppliersData, categoriesData] = await Promise.all([
-          getSuppliers(),
-          getCategories(),
-        ]);
+        const suppliersData = await getSuppliers();
         setSuppliers(suppliersData);
+
+        const categoriesData = await getCategories(); // Fetch categories
         setCategories(categoriesData);
       } catch (error) {
         console.error("Failed to fetch initial data", error);
@@ -67,7 +65,7 @@ const Statistics: React.FC = () => {
         const params: any = {
           startYear, startMonth, endYear, endMonth, sortBy,
         };
-        if (supplierFilter !== 'all') params.supplierId = supplierFilter;
+        if (supplierFilter !== 'all') params.supplierId = parseInt(String(supplierFilter), 10);
         if (categoryFilter !== 'all') params.category = categoryFilter;
         if (colorFilter !== 'all') params.color = colorFilter;
         
@@ -150,18 +148,21 @@ const Statistics: React.FC = () => {
 
           <div className="grid grid-cols-3 gap-2">
             <select 
-              value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)}
+              value={supplierFilter} onChange={e => setSupplierFilter(parseInt(e.target.value, 10) || 'all')}
               className="h-11 px-2 rounded-xl border-none bg-white text-[10px] font-black shadow-sm focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="all">모든 거래처</option>
               {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <select 
-              value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value as CategoryName | 'all')}
               className="h-11 px-2 rounded-xl border-none bg-white text-[10px] font-black shadow-sm focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="all">모든 품목</option>
-              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              ))}
             </select>
             <select 
               value={colorFilter} onChange={e => setColorFilter(e.target.value as Color | 'all')}
@@ -283,7 +284,7 @@ const Statistics: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black text-gray-300 uppercase mb-0.5">Aggregated Total</p>
-                        <p className="text-lg font-black text-primary-text">₩{stat.totalAmount.toLocaleString()}</p>
+                        <p className="text-lg font-black text-primary-text">₩{statsData.totals.amount.toLocaleString()}</p>
                       </div>
                     </div>
                   </div>

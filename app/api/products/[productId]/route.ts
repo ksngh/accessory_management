@@ -8,8 +8,10 @@ interface Params {
 }
 
 export async function GET(request: Request, { params }: Params) {
+  const { productId } = params;
   try {
-    const product = await getProduct(params.productId);
+    const id = parseInt(productId, 10);
+    const product = await getProduct(id);
     if (!product) {
       return NextResponse.json({ message: 'Product not found' }, { status: 404 });
     }

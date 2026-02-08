@@ -3,15 +3,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { getProduct } from '../src/api/products';
-import { getStock, updateStock } from '../src/api/stock';
+import { getStock, updateStock, deleteStockVariant } from '../src/api/stock';
 import { Product, StockVariant, Color, RingSize } from '../types';
 import { COLORS, RING_SIZES } from '../constants';
 
 const StockEdit: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: idString } = useParams<{ id: string }>();
+  const id = useMemo(() => (idString ? parseInt(idString, 10) : 0), [idString]);
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
-  
+  const [variants, setVariants] = useState<StockVariant[]>([]);
   const [detailedStock, setDetailedStock] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -24,6 +25,7 @@ const StockEdit: React.FC = () => {
           getStock(id),
         ]);
         setProduct(productData);
+        setVariants(stockData.variants);
         const initialStock: Record<string, number> = {};
         stockData.variants.forEach(variant => {
           const key = variant.size ? `${variant.color}-${variant.size}` : variant.color;
@@ -57,16 +59,38 @@ const StockEdit: React.FC = () => {
     }));
   };
 
+  const handleDelete = async (variantId: number) => {
+    if (!product) return;
+    if (confirm('정말로 이 재고 항목을 삭제하시겠습니까?')) {
+      try {
+        await deleteStockVariant(product.id, variantId);
+        const updatedVariants = variants.filter(v => v.id !== variantId);
+        setVariants(updatedVariants);
+        const newDetailedStock: Record<string, number> = {};
+        updatedVariants.forEach(variant => {
+          const key = variant.size ? `${variant.color}-${variant.size}` : variant.color;
+          newDetailedStock[key] = variant.quantity;
+        });
+        setDetailedStock(newDetailedStock);
+      } catch (error) {
+        console.error('Failed to delete stock variant', error);
+        alert('삭제에 실패했습니다.');
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (product) {
-      const variants: StockVariant[] = Object.entries(detailedStock).map(([key, quantity]) => {
+      const updatedVariants: StockVariant[] = Object.entries(detailedStock).map(([key, quantity]) => {
         const parts = key.split('-');
         const color = parts[0] as Color;
         const size = parts.length > 1 ? parts[1] as RingSize : undefined;
-        return { color, size, quantity };
+        const existingVariant = variants.find(v => (v.size ? `${v.color}-${v.size}` : v.color) === key);
+        return { ...existingVariant, color, size, quantity };
       });
+
       try {
-        await updateStock(product.id, variants);
+        await updateStock(product.id, updatedVariants, []);
         navigate(-1);
       } catch (error) {
         console.error("Failed to save stock", error);
@@ -76,6 +100,10 @@ const StockEdit: React.FC = () => {
   };
 
   if (!product) return null;
+
+  const getVariantByKey = (key: string) => {
+    return variants.find(v => (v.size ? `${v.color}-${v.size}` : v.color) === key);
+  }
 
   return (
     <Layout title="재고 정밀 수정" showBack>
@@ -100,34 +128,39 @@ const StockEdit: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
             <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">상세 수량 관리</h4>
-            <div className="flex gap-4 text-[9px] font-black text-gray-300 uppercase">
-              <span>Gold</span>
-              <span>Rose</span>
-              <span>Silver</span>
-            </div>
           </div>
 
           {!product.hasSizes ? (
             <div className="bg-white rounded-3xl p-5 border border-primary/10 shadow-sm space-y-4">
-              {COLORS.map(color => (
-                <div key={color} className="flex items-center justify-between p-2 bg-gray-50/50 rounded-2xl border border-gray-100">
-                  <span className="text-sm font-black text-primary-text ml-2">{color}</span>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => updateQuantity(color, -1)} className="size-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 active:bg-gray-100">
-                      <span className="material-symbols-outlined text-lg">remove</span>
-                    </button>
-                    <input 
-                      type="number"
-                      value={detailedStock[color] || 0}
-                      onChange={(e) => handleInputChange(color, e.target.value)}
-                      className="w-16 text-center text-lg font-black bg-transparent border-none focus:ring-0 p-0 text-primary-text"
-                    />
-                    <button onClick={() => updateQuantity(color, 1)} className="size-9 rounded-full bg-primary flex items-center justify-center text-primary-text active:scale-90">
-                      <span className="material-symbols-outlined text-lg">add</span>
-                    </button>
+              {COLORS.map(color => {
+                const variant = getVariantByKey(color);
+                return (
+                  <div key={color} className="flex items-center justify-between p-2 bg-gray-50/50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-black text-primary-text ml-2">{color}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => updateQuantity(color, -1)} className="size-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 active:bg-gray-100">
+                        <span className="material-symbols-outlined text-lg">remove</span>
+                      </button>
+                      <input 
+                        type="number"
+                        value={detailedStock[color] || 0}
+                        onChange={(e) => handleInputChange(color, e.target.value)}
+                        className="w-16 text-center text-lg font-black bg-transparent border-none focus:ring-0 p-0 text-primary-text"
+                      />
+                      <button onClick={() => updateQuantity(color, 1)} className="size-9 rounded-full bg-primary flex items-center justify-center text-primary-text active:scale-90">
+                        <span className="material-symbols-outlined text-lg">add</span>
+                      </button>
+                      {variant?.id && (
+                        <button onClick={() => handleDelete(variant.id!)} className="size-9 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-90">
+                          <span className="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="bg-white rounded-3xl border border-primary/10 shadow-sm overflow-hidden">
@@ -138,13 +171,11 @@ const StockEdit: React.FC = () => {
                     <div className="flex gap-2">
                       {COLORS.map(color => {
                         const key = `${color}-${size}`;
+                        const variant = getVariantByKey(key);
                         return (
                           <div key={color} className="flex flex-col items-center gap-1">
                             <div className="flex items-center bg-gray-50 rounded-lg p-1 px-1.5 border border-gray-100">
-                               <button 
-                                 onClick={() => updateQuantity(key, -1)}
-                                 className="text-gray-300 active:text-primary-dark"
-                               >
+                               <button onClick={() => updateQuantity(key, -1)} className="text-gray-300 active:text-primary-dark">
                                  <span className="material-symbols-outlined text-[14px]">remove</span>
                                </button>
                                <input 
@@ -153,13 +184,15 @@ const StockEdit: React.FC = () => {
                                  onChange={(e) => handleInputChange(key, e.target.value)}
                                  className="w-8 text-center text-[11px] font-black bg-transparent border-none focus:ring-0 p-0 text-primary-text"
                                />
-                               <button 
-                                 onClick={() => updateQuantity(key, 1)}
-                                 className="text-primary-dark active:scale-125 transition-transform"
-                               >
+                               <button onClick={() => updateQuantity(key, 1)} className="text-primary-dark active:scale-125 transition-transform">
                                  <span className="material-symbols-outlined text-[14px]">add</span>
                                </button>
                             </div>
+                            {variant?.id && (
+                              <button onClick={() => handleDelete(variant.id!)} className="mt-1 size-7 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-90">
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                              </button>
+                            )}
                           </div>
                         );
                       })}

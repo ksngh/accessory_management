@@ -10,7 +10,7 @@ const Inventory: React.FC = () => {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [selectedSupplier, setSelectedSupplier] = useState<number>(0);
   const [rows, setRows] = useState<Product[][]>([]);
   
   const dragItem = useRef<{ rowIndex: number; colIndex: number } | null>(null);
@@ -92,7 +92,7 @@ const Inventory: React.FC = () => {
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">거래처 선택</label>
           <select 
             value={selectedSupplier}
-            onChange={(e) => setSelectedSupplier(e.target.value)}
+            onChange={(e) => setSelectedSupplier(parseInt(e.target.value, 10))}
             className="w-full h-12 pl-4 pr-10 rounded-2xl border border-primary/30 bg-white font-bold text-sm text-primary-text focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
           >
             {suppliers.map(s => (

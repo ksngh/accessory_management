@@ -1,30 +1,41 @@
-
 export type Color = '골드' | '로즈' | '실버';
 export type RingSize = '3호' | '5호' | '7호' | '9호' | '11호' | '13호' | '15호' | '17호' | '19호' | '21호' | '23호';
 
+export type CategoryName = string;
+
+
+
+export interface User {
+  id: number;
+  username: string;
+  password?: string;
+}
+
 export interface Product {
-  id: string;
+  id: number;
   name: string;
   sku: string;
   price: number;
-  category: string;
+  categoryId: number;
+  category: CategoryName;
   imageUrl: string;
-  supplierId: string;
+  supplierId: number;
   supplierName?: string;
   stock: number;
   hasSizes?: boolean;
+  userId: number;
 }
 
 export interface Category {
-  id: string;
-  name: string;
-  count: number;
-  icon: string;
+  id: number;
+  name: CategoryName;
+  userId: number;
 }
 
 export interface Supplier {
-  id: string;
+  id: number;
   name: string;
+  userId: number;
 }
 
 export enum OrderStatus {
@@ -39,35 +50,37 @@ export interface OrderItem extends Product {
 }
 
 export interface Order {
-  id: string;
+  id: number;
   orderNumber: string;
   date: string;
-  supplierId: string;
+  supplierId: number;
   supplierName?: string;
   itemCount: number;
   totalAmount: number;
   status: OrderStatus;
   items?: OrderItem[]; // 상세 내역 조회를 위한 아이템 리스트 추가
+  userId: number;
 }
 
 export interface StockVariant {
+  id?: number;
   color: Color;
   size?: RingSize;
   quantity: number;
 }
 
 export interface StockDetail {
-  productId: string;
+  productId: number;
   total: number;
   variants: StockVariant[];
 }
 
 export interface ProductStat {
-  id: string;
+  id: number;
   name: string;
   imageUrl?: string;
   category: string;
-  supplierId: string;
+  supplierId: number;
   supplierName: string;
   totalQty: number;
   unitPrice: number;

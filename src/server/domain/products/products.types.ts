@@ -1,11 +1,14 @@
+import { CategoryName } from '@/types'; // Import CategoryName
+
 export interface Product {
-  id: string;
+  id: number;
   name: string;
   sku: string;
   price: number;
-  category: string;
+  categoryId: number;
+  category: CategoryName;
   imageUrl: string;
-  supplierId: string;
+  supplierId: number;
   supplierName?: string;
   stock: number;
   hasSizes: boolean;

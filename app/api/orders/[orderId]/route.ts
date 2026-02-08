@@ -9,8 +9,10 @@ interface Params {
 }
 
 export async function GET(request: Request, { params }: Params) {
+  const { orderId } = params;
   try {
-    const order = await getOrder(params.orderId);
+    const id = parseInt(orderId, 10);
+    const order = await getOrder(id);
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
@@ -22,9 +24,11 @@ export async function GET(request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
+  const { orderId } = params;
   try {
+    const id = parseInt(orderId, 10);
     const body = await request.json();
-    const updatedOrder = await updateOrderStatus(params.orderId, body);
+    const updatedOrder = await updateOrderStatus(id, body);
     if (!updatedOrder) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }

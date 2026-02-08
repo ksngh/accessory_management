@@ -19,15 +19,17 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "paths": {
-      "@/server/*": [
-        "src/server/*"
-      ],
-      "@/components/*": [
-        "components/*"
-      ]
-    },
-    "allowImportingTsExtensions": true,
+          "paths": {
+            "@/server/*": [
+              "src/server/*"
+            ],
+            "@/components/*": [
+              "components/*"
+            ],
+            "@/types": [
+              "types.ts"
+            ]
+          },    "allowImportingTsExtensions": true,
     "noEmit": true,
     "strict": false,
     "incremental": true,

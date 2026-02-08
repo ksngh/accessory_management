@@ -40,3 +40,7 @@ pnpm-debug.log*
 
 # OS
 .DS_Store
+.next/
+.env
+.env.local
+.env.*.local

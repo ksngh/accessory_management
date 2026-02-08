@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { fetcher } from '../src/api/fetcher';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,10 +23,13 @@ const Layout: React.FC<LayoutProps> = ({ children, title, showBack }) => {
     if (savedName) setStoreName(savedName);
   }, [isSettingsOpen]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    // HashRouter 환경에서는 단순히 navigate를 쓰거나 새로고침하는 것이 안전합니다.
-    window.location.reload(); 
+  const handleLogout = async () => {
+    try {
+      await fetcher('/auth/logout', { method: 'POST' });
+    } finally {
+      // HashRouter 환경에서는 단순히 navigate를 쓰거나 새로고침하는 것이 안전합니다.
+      window.location.reload();
+    }
   };
 
   const handleSaveStoreName = () => {

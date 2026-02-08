@@ -117,3 +117,8 @@ export const updateOrderStatus = async (id: number, status: OrderStatus, userId:
   if (result.rows.length === 0) return null;
   return findOrderById(id, userId);
 };
+
+export const deleteOrder = async (id: number, userId: number): Promise<boolean> => {
+  const result = await pool.query('DELETE FROM orders WHERE id = $1 AND user_id = $2', [id, userId]);
+  return (result.rowCount ?? 0) > 0;
+};

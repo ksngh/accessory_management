@@ -10,16 +10,41 @@ import OrderDetail from './pages/OrderDetail';
 import StockEdit from './pages/StockEdit';
 import Login from './pages/Login';
 import Statistics from './pages/Statistics';
+import { fetcher } from './src/api/fetcher';
 
 const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('isLoggedIn') === 'true';
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   const handleLogin = () => {
-    localStorage.setItem('isLoggedIn', 'true');
     setIsLoggedIn(true);
   };
+
+  useEffect(() => {
+    let isActive = true;
+
+    const checkAuth = async () => {
+      try {
+        await fetcher('/auth/me');
+        if (isActive) setIsLoggedIn(true);
+      } catch {
+        if (isActive) setIsLoggedIn(false);
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  if (isLoggedIn === null) {
+    return (
+      <div className="max-w-[480px] mx-auto min-h-screen flex items-center justify-center bg-white">
+        <span className="text-xs font-bold text-gray-400">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <Router>

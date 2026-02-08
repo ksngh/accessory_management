@@ -23,3 +23,11 @@ export const deleteStockVariant = (productId: number, variantId: number): Promis
     method: 'DELETE',
   });
 };
+
+export const deleteStockVariantByKey = (productId: number, color: string, size?: string): Promise<void> => {
+  const usp = new URLSearchParams({ color });
+  if (size) usp.set('size', size);
+  return fetcher<void>(`/products/${productId}/stock?${usp.toString()}`, {
+    method: 'DELETE',
+  });
+};

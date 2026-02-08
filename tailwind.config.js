@@ -1,14 +1,22 @@
+import forms from '@tailwindcss/forms';
+import containerQueries from '@tailwindcss/container-queries';
+import animate from 'tailwindcss-animate';
+
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
+    "./app/**/*.{js,ts,jsx,tsx}",
     "./App.tsx",
   ],
   theme: {
     extend: {
+      spacing: {
+        15: '3.75rem',
+      },
       colors: {
         primary: '#F3E5AB',
         'primary-dark': '#D4C38E',
@@ -18,11 +26,8 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Noto Sans KR', 'Inter', 'sans-serif'],
-      }
+      },
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/container-queries'),
-  ],
-}
+  plugins: [forms, containerQueries, animate],
+};

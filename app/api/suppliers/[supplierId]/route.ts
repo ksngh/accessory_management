@@ -1,21 +1,30 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { updateSupplier, deleteSupplier } from '@/server/domain/suppliers/suppliers.service';
 import { ZodError } from 'zod';
+import { getUserIdFromRequest } from '../../_utils/auth';
 
 interface Params {
-  params: {
+  params: Promise<{
     supplierId: string;
-  }
+  }>;
 }
 
-export async function PATCH(request: Request, { params }: Params) {
-  const { supplierId } = params;
+export async function PATCH(request: NextRequest, { params }: Params) {
   try {
+    const { supplierId } = await params;
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const id = parseInt(supplierId, 10);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ message: 'Invalid supplier id' }, { status: 400 });
+    }
     console.log(`--- PATCH request received for supplierId: ${id} ---`);
     const body = await request.json();
     console.log('Request body:', body);
-    const updatedSupplier = await updateSupplier(id, body);
+    const updatedSupplier = await updateSupplier(id, body, userId);
     if (!updatedSupplier) {
       console.log(`--- Supplier with ID ${id} not found in database. ---`);
       return NextResponse.json({ message: 'Supplier not found' }, { status: 404 });
@@ -31,12 +40,20 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(request: Request, { params }: Params) {
-  const { supplierId } = params;
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
+    const { supplierId } = await params;
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const id = parseInt(supplierId, 10);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ message: 'Invalid supplier id' }, { status: 400 });
+    }
     console.log(`--- DELETE request received for supplierId: ${id} ---`);
-    const success = await deleteSupplier(id);
+    const success = await deleteSupplier(id, userId);
     if (!success) {
       console.log(`--- Supplier with ID ${id} not found or could not be deleted. ---`);
       return NextResponse.json({ message: 'Supplier not found' }, { status: 404 });

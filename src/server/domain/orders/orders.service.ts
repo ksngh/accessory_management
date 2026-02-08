@@ -20,3 +20,7 @@ export const updateOrderStatus = async (id: number, data: { status: OrderStatus 
   const validatedData = orderUpdateSchema.parse(data);
   return await repo.updateOrderStatus(id, validatedData.status, userId);
 };
+
+export const deleteOrder = async (id: number, userId: number): Promise<boolean> => {
+  return await repo.deleteOrder(id, userId);
+};

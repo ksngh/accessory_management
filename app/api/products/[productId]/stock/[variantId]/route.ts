@@ -1,17 +1,28 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { deleteStockVariant } from '@/server/domain/stock/stock.service';
 import { ZodError } from 'zod';
+import { getUserIdFromRequest } from '../../../../_utils/auth';
 
 interface Params {
-  params: {
+  params: Promise<{
     productId: string;
     variantId: string;
-  }
+  }>;
 }
 
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    await deleteStockVariant(params.variantId);
+    const { variantId } = await params;
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const variantIdNumber = parseInt(variantId, 10);
+    if (!Number.isFinite(variantIdNumber)) {
+      return NextResponse.json({ message: 'Invalid variant id' }, { status: 400 });
+    }
+    await deleteStockVariant(variantIdNumber, userId);
     return NextResponse.json({ message: 'Stock variant deleted successfully' });
   } catch (error) {
     if (error instanceof ZodError) {

@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { getProducts } from '../src/api/products';
+import { getProducts, updateProductOrder, deleteProduct } from '../src/api/products';
 import { getSuppliers } from '../src/api/suppliers';
 import { Product, Supplier } from '../types';
 
@@ -46,17 +46,74 @@ const Inventory: React.FC = () => {
     fetchProducts();
   }, [selectedSupplier]);
 
-  useEffect(() => {
-    const chunked: Product[][] = [];
-    for (let i = 0; i < products.length; i += 6) {
-      chunked.push(products.slice(i, i + 6));
+  const buildRowsFromProducts = (items: Product[]): Product[][] => {
+    const hasLayout = items.some(item => (item.displayRow ?? 0) !== 0 || (item.displayCol ?? 0) !== 0);
+    if (!hasLayout) {
+      const chunked: Product[][] = [];
+      for (let i = 0; i < items.length; i += 6) {
+        chunked.push(items.slice(i, i + 6));
+      }
+      if (chunked.length === 0) chunked.push([]);
+      return chunked;
     }
-    if (chunked.length === 0) chunked.push([]);
-    setRows(chunked);
+
+    const rowMap = new Map<number, Product[]>();
+    items.forEach(item => {
+      const rowIndex = item.displayRow ?? 0;
+      const colIndex = item.displayCol ?? 0;
+      const normalized = { ...item, displayRow: rowIndex, displayCol: colIndex };
+      if (!rowMap.has(rowIndex)) rowMap.set(rowIndex, []);
+      rowMap.get(rowIndex)!.push(normalized);
+    });
+
+    const rowsSorted = Array.from(rowMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([, row]) =>
+        row.sort((a, b) => (a.displayCol ?? 0) - (b.displayCol ?? 0) || a.id - b.id)
+      );
+
+    return rowsSorted.length > 0 ? rowsSorted : [[]];
+  };
+
+  useEffect(() => {
+    setRows(buildRowsFromProducts(products));
   }, [products]);
 
   const addRow = () => {
     setRows(prev => [...prev, []]);
+  };
+
+  const persistOrder = async (nextRows: Product[][]) => {
+    if (!selectedSupplier) return;
+    const items = nextRows.flatMap((row, rowIndex) =>
+      row.map((product, colIndex) => ({
+        productId: product.id,
+        rowIndex,
+        colIndex,
+      }))
+    );
+    if (items.length === 0) return;
+
+    try {
+      await updateProductOrder(selectedSupplier, items);
+    } catch (error) {
+      console.error('Failed to save product order', error);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: number) => {
+    if (!confirm('이 상품을 재고에서 삭제할까요? 삭제하면 복구할 수 없습니다.')) return;
+    try {
+      await deleteProduct(productId);
+      const nextProducts = products.filter(product => product.id !== productId);
+      setProducts(nextProducts);
+      const nextRows = buildRowsFromProducts(nextProducts);
+      setRows(nextRows);
+      void persistOrder(nextRows);
+    } catch (error: any) {
+      console.error('Failed to delete product', error);
+      alert(error?.message || '삭제에 실패했습니다.');
+    }
   };
 
   const handleSort = () => {
@@ -70,6 +127,7 @@ const Inventory: React.FC = () => {
     newRows[toRow].splice(toCol, 0, movedItem);
 
     setRows(newRows);
+    void persistOrder(newRows);
     dragItem.current = null;
     dragOverItem.current = null;
   };
@@ -141,6 +199,15 @@ const Inventory: React.FC = () => {
                       >
                         <span className="material-symbols-outlined text-base font-bold">edit_note</span>
                       </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDeleteProduct(product.id);
+                        }}
+                        className="absolute -top-1 -left-1 size-8 bg-white rounded-full shadow-lg border border-red-200 flex items-center justify-center text-red-500 active:scale-90 transition-all z-10"
+                      >
+                        <span className="material-symbols-outlined text-base font-bold">delete</span>
+                      </button>
 
                       <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-primary/95 backdrop-blur-sm rounded-lg text-[8px] font-black text-primary-text border border-primary/20 shadow-sm">
                         재고 {product.stock}
@@ -148,7 +215,7 @@ const Inventory: React.FC = () => {
                     </div>
 
                     <div className="px-1 text-center">
-                      <p className="text-primary-text font-black text-[11px]">₩{product.price.toLocaleString()}</p>
+                      <p className="text-primary-text font-black text-[11px]">₩{Number(product.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                     </div>
                   </div>
                 ))}
@@ -181,7 +248,7 @@ const Inventory: React.FC = () => {
 
       <div className="fixed bottom-28 right-6 z-[60]">
         <button 
-          onClick={() => navigate('/product/add')}
+          onClick={() => navigate('/product/add', { state: { supplierId: selectedSupplier } })}
           className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-text shadow-lg active:scale-95 transition-all border-4 border-white"
         >
           <span className="material-symbols-outlined text-2xl font-bold">add</span>

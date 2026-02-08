@@ -12,4 +12,6 @@ export interface Product {
   supplierName?: string;
   stock: number;
   hasSizes: boolean;
+  displayRow: number;
+  displayCol: number;
 }

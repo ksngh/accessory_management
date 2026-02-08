@@ -5,7 +5,8 @@ export const findAllProducts = async (userId: number, filters: { supplierId?: nu
   let query = `
     SELECT 
       p.id, p.name, p.sku, p.price, c.name as category, p.image_url as "imageUrl", 
-      s.id as "supplierId", s.name as "supplierName", p.stock, p.has_sizes as "hasSizes"
+      s.id as "supplierId", s.name as "supplierName", p.stock, p.has_sizes as "hasSizes",
+      p.display_row as "displayRow", p.display_col as "displayCol"
     FROM products p
     JOIN categories c ON p.category_id = c.id
     JOIN suppliers s ON p.supplier_id = s.id
@@ -25,6 +26,7 @@ export const findAllProducts = async (userId: number, filters: { supplierId?: nu
   }
 
   query += ' WHERE ' + whereClause;
+  query += ' ORDER BY p.display_row ASC, p.display_col ASC, p.id ASC';
 
   const result = await pool.query(query, queryParams);
   return result.rows;
@@ -35,7 +37,8 @@ export const findProductById = async (id: number, userId: number): Promise<Produ
     `
       SELECT 
         p.id, p.name, p.sku, p.price, c.name as category, p.image_url as "imageUrl", 
-        s.id as "supplierId", s.name as "supplierName", p.stock, p.has_sizes as "hasSizes"
+        s.id as "supplierId", s.name as "supplierName", p.stock, p.has_sizes as "hasSizes",
+        p.display_row as "displayRow", p.display_col as "displayCol"
       FROM products p
       JOIN categories c ON p.category_id = c.id
       JOIN suppliers s ON p.supplier_id = s.id
@@ -65,7 +68,7 @@ export const createBulkProducts = async (products: any[], userId: number): Promi
       const result = await client.query(
         `INSERT INTO products (name, sku, price, category_id, image_url, supplier_id, has_sizes, user_id) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, sku, price, (SELECT name FROM categories WHERE id = $4) as category, image_url as "imageUrl", supplier_id as "supplierId", (SELECT name FROM suppliers WHERE id = $6) as "supplierName", stock, has_sizes as "hasSizes", user_id as "userId"`,
+         RETURNING id, name, sku, price, (SELECT name FROM categories WHERE id = $4) as category, image_url as "imageUrl", supplier_id as "supplierId", (SELECT name FROM suppliers WHERE id = $6) as "supplierName", stock, has_sizes as "hasSizes", display_row as "displayRow", display_col as "displayCol", user_id as "userId"`,
         [
           product.name,
           product.sku,
@@ -81,6 +84,32 @@ export const createBulkProducts = async (products: any[], userId: number): Promi
     }
     await client.query('COMMIT');
     return createdProducts;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+};
+
+export const deleteProduct = async (id: number, userId: number): Promise<boolean> => {
+  const result = await pool.query('DELETE FROM products WHERE id = $1 AND user_id = $2', [id, userId]);
+  return (result.rowCount ?? 0) > 0;
+};
+
+export const updateProductOrder = async (userId: number, supplierId: number, items: { productId: number; rowIndex: number; colIndex: number }[]): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const item of items) {
+      await client.query(
+        'UPDATE products SET display_row = $1, display_col = $2 WHERE id = $3 AND user_id = $4 AND supplier_id = $5',
+        [item.rowIndex, item.colIndex, item.productId, userId, supplierId]
+      );
+    }
+
+    await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;

@@ -1,18 +1,27 @@
-import { NextResponse } from 'next/server';
-import { getStockDetail, updateStock } from '@/server/domain/stock/stock.service';
+import { NextRequest, NextResponse } from 'next/server';
+import { getStockDetail, updateStock, deleteStockVariantByKey } from '@/server/domain/stock/stock.service';
 import { ZodError } from 'zod';
+import { getUserIdFromRequest } from '../../../_utils/auth';
 
 interface Params {
-  params: {
+  params: Promise<{
     productId: string;
-  }
+  }>;
 }
 
-export async function GET(request: Request, { params }: Params) {
-  const { productId } = params;
+export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { productId } = await params;
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const id = parseInt(productId, 10);
-    const stockDetail = await getStockDetail(id);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ message: 'Invalid product id' }, { status: 400 });
+    }
+    const stockDetail = await getStockDetail(id, userId);
     return NextResponse.json(stockDetail);
   } catch (error) {
     console.error(error);
@@ -20,10 +29,18 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-export async function PUT(request: Request, { params }: Params) {
-  const { productId } = params;
+export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const { productId } = await params;
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const id = parseInt(productId, 10);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ message: 'Invalid product id' }, { status: 400 });
+    }
     const formData = await request.formData();
     const variantsData = formData.get('variants');
     if (!variantsData || typeof variantsData !== 'string') {
@@ -53,13 +70,47 @@ export async function PUT(request: Request, { params }: Params) {
       }
     }
     
-    await updateStock(id, { variants });
-    const updatedStockDetail = await getStockDetail(id);
+    await updateStock(id, { variants }, userId);
+    const updatedStockDetail = await getStockDetail(id, userId);
     return NextResponse.json(updatedStockDetail);
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ message: 'Validation error', errors: error.errors }, { status: 400 });
     }
+    console.error(error);
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const { productId } = await params;
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const id = parseInt(productId, 10);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ message: 'Invalid product id' }, { status: 400 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const color = searchParams.get('color');
+    const sizeParam = searchParams.get('size');
+    const size = sizeParam ? sizeParam : null;
+
+    if (!color) {
+      return NextResponse.json({ message: 'Missing color' }, { status: 400 });
+    }
+
+    const success = await deleteStockVariantByKey(id, color, size, userId);
+    if (!success) {
+      return NextResponse.json({ message: 'Stock variant not found' }, { status: 404 });
+    }
+
+    return new Response(null, { status: 204 });
+  } catch (error) {
     console.error(error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }

@@ -24,8 +24,20 @@ export async function POST(request: Request) {
 
     const token = generateToken(user);
 
-    return NextResponse.json({ token });
+    const response = NextResponse.json({ token });
+    response.cookies.set({
+      name: 'accesstoken',
+      value: token,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+    });
+
+    return response;
   } catch (error: any) {
+    console.error('auth/login failed', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }

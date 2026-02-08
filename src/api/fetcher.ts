@@ -6,11 +6,23 @@ if (!API_BASE_URL) {
 
 export const fetcher = async <T>(path: string, options?: RequestInit): Promise<T> => {
   const url = `${API_BASE_URL}${path}`;
-  const response = await fetch(url, options);
+  const response = await fetch(url, {
+    credentials: 'include',
+    ...options,
+  });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
     throw new Error(errorBody.message || 'API request failed');
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return undefined as T;
   }
 
   return response.json();

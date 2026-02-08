@@ -2,20 +2,27 @@ import { fetcher } from './fetcher';
 import { Category } from '@/types';
 
 export const getCategories = async (): Promise<Category[]> => {
-  const data = await fetcher.get<Category[]>('/api/categories');
-  return data;
+  return fetcher<Category[]>('/categories');
 };
 
 export const createCategory = async (name: string): Promise<Category> => {
-  const data = await fetcher.post<Category>('/api/categories', { name });
-  return data;
+  return fetcher<Category>('/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
 };
 
 export const updateCategory = async (id: number, name: string): Promise<Category> => {
-  const data = await fetcher.put<Category>(`/api/categories/${id}`, { name });
-  return data;
+  return fetcher<Category>(`/categories/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
 };
 
 export const deleteCategory = async (id: number): Promise<void> => {
-  await fetcher.delete(`/api/categories/${id}`);
+  await fetcher<void>(`/categories/${id}`, {
+    method: 'DELETE',
+  });
 };

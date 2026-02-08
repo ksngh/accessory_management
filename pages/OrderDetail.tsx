@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { getOrder, updateOrderStatus } from '../src/api/orders';
+import { getOrder, updateOrderStatus, deleteOrder } from '../src/api/orders';
 import { Order, OrderStatus, OrderItem } from '../types';
 
 const OrderDetail: React.FC = () => {
@@ -70,6 +70,18 @@ const OrderDetail: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!order) return;
+    if (!confirm('이 발주 내역을 삭제할까요? 삭제하면 복구할 수 없습니다.')) return;
+    try {
+      await deleteOrder(order.id);
+      navigate('/orders');
+    } catch (error) {
+      console.error('Failed to delete order', error);
+      alert('삭제에 실패했습니다.');
+    }
+  };
+
   return (
     <Layout title="발주 상세 내역" showBack>
       <div className="px-5 py-6 space-y-6 pb-48">
@@ -80,17 +92,25 @@ const OrderDetail: React.FC = () => {
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Order Number</span>
               <h3 className="text-2xl font-black text-primary-text tracking-tighter">{order.orderNumber}</h3>
             </div>
-            
-            <button 
-              onClick={toggleStatus}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-black transition-all active:scale-95 shadow-sm ${getStatusColor(order.status)}`}
-            >
-              <span className="material-symbols-outlined text-[14px]">
-                {order.status === OrderStatus.COMPLETED ? 'check_circle' : 'schedule'}
-              </span>
-              {order.status}
-              <span className="material-symbols-outlined text-[12px] opacity-50 ml-1">sync_alt</span>
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              <button 
+                onClick={toggleStatus}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-black transition-all active:scale-95 shadow-sm ${getStatusColor(order.status)}`}
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  {order.status === OrderStatus.COMPLETED ? 'check_circle' : 'schedule'}
+                </span>
+                {order.status}
+                <span className="material-symbols-outlined text-[12px] opacity-50 ml-1">sync_alt</span>
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-red-200 bg-red-50 text-[10px] font-black text-red-500 transition-all active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[12px]">delete</span>
+                삭제
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 py-5 border-t border-gray-50">
@@ -147,7 +167,7 @@ const OrderDetail: React.FC = () => {
                           )}
                         </div>
                         <p className="text-[10px] font-bold text-gray-400 ml-1">
-                          단가 ₩{variant.price.toLocaleString()}
+                          단가 ₩{Number(variant.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </p>
                       </div>
 
@@ -158,7 +178,7 @@ const OrderDetail: React.FC = () => {
                         </div>
                         <div className="text-right min-w-[80px]">
                           <span className="text-[9px] font-black text-gray-300 uppercase tracking-tighter block mb-0.5">Subtotal</span>
-                          <span className="text-sm font-black text-primary-dark">₩{(variant.price * variant.quantity).toLocaleString()}</span>
+                          <span className="text-sm font-black text-primary-dark">₩{Number(variant.price * variant.quantity).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                         </div>
                       </div>
                     </div>
@@ -180,7 +200,7 @@ const OrderDetail: React.FC = () => {
             </div>
             <div className="text-right flex flex-col">
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">최종 발주 합계</span>
-              <span className="text-2xl font-black text-primary-text">₩{order.totalAmount.toLocaleString()}</span>
+              <span className="text-2xl font-black text-primary-text">₩{Number(order.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </div>
           </div>
         </div>

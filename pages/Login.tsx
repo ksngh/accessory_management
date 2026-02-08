@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { fetcher } from '../src/api/fetcher';
 
 interface LoginProps {
   onLogin: () => void;
@@ -8,13 +9,29 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (id.trim() && password.trim()) {
-      onLogin();
-    } else {
+    if (!id.trim() || !password.trim()) {
       alert('아이디와 비밀번호를 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await fetcher('/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username: id, password }),
+      });
+      onLogin();
+    } catch (error: any) {
+      alert(error?.message || '로그인에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -59,9 +76,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
           <button 
             type="submit"
+            disabled={isSubmitting}
             className="w-full h-15 bg-primary text-primary-text font-black text-lg rounded-2xl shadow-xl shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
-            로그인
+            {isSubmitting ? '로그인 중...' : '로그인'}
             <span className="material-symbols-outlined font-black">arrow_forward</span>
           </button>
         </form>

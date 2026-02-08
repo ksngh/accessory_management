@@ -229,7 +229,7 @@ const Statistics: React.FC = () => {
                   </div>
                   <div className="space-y-1 text-right">
                     <p className="text-[9px] font-black text-primary/40 uppercase">Total Valuation</p>
-                    <p className="text-2xl font-black text-primary">₩{statsData.totals.amount.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-primary">₩{Number(statsData.totals.amount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                   </div>
                 </div>
               </div>
@@ -275,7 +275,7 @@ const Statistics: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-3">
                            <span className="text-[9px] font-black text-gray-300 uppercase w-12 text-right">Unit</span>
-                           <span className="text-xs font-bold text-gray-500">₩{stat.unitPrice.toLocaleString()}</span>
+                           <span className="text-xs font-bold text-gray-500">₩{Number(stat.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                         </div>
                         <div className="flex items-center gap-3">
                            <span className="text-[9px] font-black text-gray-300 uppercase w-12 text-right">Volume</span>
@@ -284,7 +284,7 @@ const Statistics: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black text-gray-300 uppercase mb-0.5">Aggregated Total</p>
-                        <p className="text-lg font-black text-primary-text">₩{statsData.totals.amount.toLocaleString()}</p>
+                        <p className="text-lg font-black text-primary-text">₩{Number(statsData.totals.amount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                       </div>
                     </div>
                   </div>

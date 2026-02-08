@@ -28,3 +28,9 @@ export const updateOrderStatus = (id: number, status: OrderStatus): Promise<Orde
     body: JSON.stringify({ status }),
   });
 };
+
+export const deleteOrder = (id: number): Promise<void> => {
+  return fetcher<void>(`/orders/${id}`, {
+    method: 'DELETE',
+  });
+};

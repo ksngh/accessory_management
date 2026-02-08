@@ -20,3 +20,17 @@ export const createBulkProducts = (data: any): Promise<Product[]> => {
     body: JSON.stringify(data),
   });
 };
+
+export const deleteProduct = (id: number): Promise<void> => {
+  return fetcher<void>(`/products/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+export const updateProductOrder = (supplierId: number, items: { productId: number; rowIndex: number; colIndex: number }[]): Promise<{ success: boolean }> => {
+  return fetcher<{ success: boolean }>('/products/order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ supplierId, items }),
+  });
+};

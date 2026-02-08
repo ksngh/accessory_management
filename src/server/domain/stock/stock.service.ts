@@ -26,3 +26,12 @@ export const deleteStockVariant = async (variantId: number, userId: number): Pro
 
   await repo.deleteStockVariantById(variantId, userId);
 };
+
+export const deleteStockVariantByKey = async (
+  productId: number,
+  color: string,
+  size: string | null,
+  userId: number
+): Promise<boolean> => {
+  return await repo.deleteStockVariantByKey(productId, color, size, userId);
+};

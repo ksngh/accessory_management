@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { getProduct } from '../src/api/products';
-import { getStock, updateStock, deleteStockVariant } from '../src/api/stock';
+import { getStock, updateStock } from '../src/api/stock';
 import { Product, StockVariant, Color, RingSize } from '../types';
 import { COLORS, RING_SIZES } from '../constants';
 
@@ -59,25 +59,6 @@ const StockEdit: React.FC = () => {
     }));
   };
 
-  const handleDelete = async (variantId: number) => {
-    if (!product) return;
-    if (confirm('정말로 이 재고 항목을 삭제하시겠습니까?')) {
-      try {
-        await deleteStockVariant(product.id, variantId);
-        const updatedVariants = variants.filter(v => v.id !== variantId);
-        setVariants(updatedVariants);
-        const newDetailedStock: Record<string, number> = {};
-        updatedVariants.forEach(variant => {
-          const key = variant.size ? `${variant.color}-${variant.size}` : variant.color;
-          newDetailedStock[key] = variant.quantity;
-        });
-        setDetailedStock(newDetailedStock);
-      } catch (error) {
-        console.error('Failed to delete stock variant', error);
-        alert('삭제에 실패했습니다.');
-      }
-    }
-  };
 
   const handleSave = async () => {
     if (product) {
@@ -116,7 +97,7 @@ const StockEdit: React.FC = () => {
           />
           <div className="space-y-1 overflow-hidden">
             <p className="text-[10px] font-black text-primary-dark uppercase tracking-widest truncate">{product.supplierName}</p>
-            <h3 className="text-lg font-black text-primary-text leading-tight truncate">₩{product.price.toLocaleString()}</h3>
+            <h3 className="text-lg font-black text-primary-text leading-tight truncate">₩{Number(product.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 rounded-full">
               <span className="size-2 rounded-full bg-primary-dark" />
               <span className="text-[10px] font-black text-primary-dark">총 재고: {totalStock}개</span>
@@ -152,11 +133,6 @@ const StockEdit: React.FC = () => {
                       <button onClick={() => updateQuantity(color, 1)} className="size-9 rounded-full bg-primary flex items-center justify-center text-primary-text active:scale-90">
                         <span className="material-symbols-outlined text-lg">add</span>
                       </button>
-                      {variant?.id && (
-                        <button onClick={() => handleDelete(variant.id!)} className="size-9 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-90">
-                          <span className="material-symbols-outlined text-lg">delete</span>
-                        </button>
-                      )}
                     </div>
                   </div>
                 )
@@ -188,11 +164,6 @@ const StockEdit: React.FC = () => {
                                  <span className="material-symbols-outlined text-[14px]">add</span>
                                </button>
                             </div>
-                            {variant?.id && (
-                              <button onClick={() => handleDelete(variant.id!)} className="mt-1 size-7 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-90">
-                                <span className="material-symbols-outlined text-sm">delete</span>
-                              </button>
-                            )}
                           </div>
                         );
                       })}

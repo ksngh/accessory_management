@@ -90,3 +90,42 @@ export const deleteStockVariantById = async (variantId: number, userId: number):
     client.release();
   }
 };
+
+export const deleteStockVariantByKey = async (
+  productId: number,
+  color: string,
+  size: string | null,
+  userId: number
+): Promise<boolean> => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const productCheck = await client.query('SELECT id FROM products WHERE id = $1 AND user_id = $2', [productId, userId]);
+    if (productCheck.rows.length === 0) {
+      throw new Error('Product not found or user does not have permission');
+    }
+
+    const deleteResult = await client.query(
+      `DELETE FROM stock_variants
+       WHERE product_id = $1 AND color = $2 AND size IS NOT DISTINCT FROM $3
+       RETURNING id`,
+      [productId, color, size]
+    );
+
+    const totalStockResult = await client.query(
+      'SELECT SUM(quantity) as total FROM stock_variants WHERE product_id = $1',
+      [productId]
+    );
+    const totalStock = totalStockResult.rows[0].total || 0;
+    await client.query('UPDATE products SET stock = $1 WHERE id = $2', [totalStock, productId]);
+
+    await client.query('COMMIT');
+    return (deleteResult.rowCount ?? 0) > 0;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+};

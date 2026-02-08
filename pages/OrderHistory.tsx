@@ -93,7 +93,7 @@ const OrderHistory: React.FC = () => {
 
                 <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Total Amount</span>
-                  <span className="text-lg font-black text-primary-text">₩{order.totalAmount.toLocaleString()}</span>
+                  <span className="text-lg font-black text-primary-text">₩{Number(order.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
               </div>
             </div>

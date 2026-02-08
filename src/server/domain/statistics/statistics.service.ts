@@ -2,7 +2,7 @@ import * as repo from './statistics.repo';
 import { ProductStatisticsResponse } from './statistics.types';
 import { productStatisticsSchema } from '@/server/validators/statistics';
 
-export const getProductStatistics = async (query: any): Promise<ProductStatisticsResponse> => {
+export const getProductStatistics = async (query: any, userId: number): Promise<ProductStatisticsResponse> => {
   const validatedQuery = productStatisticsSchema.parse(query);
 
   const { startYear, startMonth, endYear, endMonth, sortBy, ...filters } = validatedQuery;
@@ -10,7 +10,7 @@ export const getProductStatistics = async (query: any): Promise<ProductStatistic
   const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1, 1);
   const endDate = new Date(parseInt(endYear), parseInt(endMonth), 1);
 
-  const items = await repo.findProductStatistics({ startDate, endDate, sortBy, ...filters });
+  const items = await repo.findProductStatistics({ startDate, endDate, sortBy, userId, ...filters });
 
   const totals = items.reduce(
     (acc, item) => {

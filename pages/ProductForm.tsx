@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { getSuppliers } from '../src/api/suppliers';
 import { createBulkProducts } from '../src/api/products';
@@ -18,13 +18,14 @@ interface BulkProductEntry {
 
 const ProductForm: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); // New state for categories
   const [supplier, setSupplier] = useState<number>(0);
   const [entries, setEntries] = useState<BulkProductEntry[]>([]);
   
   // 일괄 설정을 위한 상태
-  const [bulkCategory, setBulkCategory] = useState<CategoryName>(''); // Default to empty string
+  const [bulkCategory, setBulkCategory] = useState<CategoryName | null>(null);
   const [bulkPrice, setBulkPrice] = useState('');
 
   useEffect(() => {
@@ -32,21 +33,25 @@ const ProductForm: React.FC = () => {
       try {
         const suppliersData = await getSuppliers();
         setSuppliers(suppliersData);
-        if (suppliersData.length > 0) {
+        const preferredSupplierId = Number((location.state as { supplierId?: number } | null)?.supplierId);
+        const hasPreferred = suppliersData.some(s => s.id === preferredSupplierId);
+        if (hasPreferred) {
+          setSupplier(preferredSupplierId);
+        } else if (suppliersData.length > 0) {
           setSupplier(suppliersData[0].id);
         }
 
         const categoriesData = await getCategories(); // Fetch categories
         setCategories(categoriesData);
         if (categoriesData.length > 0) {
-          setBulkCategory(categoriesData[0].name); // Set default bulk category
+          setBulkCategory(categoriesData[0].name);
         }
       } catch (error) {
         console.error("Failed to fetch data", error);
       }
     };
     fetchData();
-  }, []);
+  }, [location.state]);
 
   const removeEntry = (id: string) => {
     setEntries(entries.filter(e => e.id !== id));
@@ -57,9 +62,10 @@ const ProductForm: React.FC = () => {
   };
 
   const applyBulkSettings = () => {
+    const resolvedCategory = bulkCategory ?? categories[0]?.name;
     setEntries(entries.map(e => ({
       ...e,
-      category: bulkCategory,
+      category: resolvedCategory ?? e.category,
       price: bulkPrice || e.price
     })));
   };
@@ -67,6 +73,9 @@ const ProductForm: React.FC = () => {
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
+
+    const resolvedCategory = bulkCategory ?? categories[0]?.name;
+    if (!resolvedCategory) return;
 
     const fileList = Array.from(files);
     let loadedEntries: BulkProductEntry[] = [];
@@ -79,7 +88,7 @@ const ProductForm: React.FC = () => {
         loadedEntries.push({
           id: Math.random().toString(36).substr(2, 9),
           image: reader.result ? String(reader.result) : null,
-          category: bulkCategory,
+          category: resolvedCategory,
           price: bulkPrice,
           name: name,
           sku: name.toUpperCase(),
@@ -145,7 +154,7 @@ const ProductForm: React.FC = () => {
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-gray-400 ml-1">카테고리</label>
                 <select
-                  value={bulkCategory}
+                  value={bulkCategory ?? ''}
                   onChange={(e) => setBulkCategory(e.target.value as CategoryName)}
                   className="w-full h-11 px-3 rounded-xl border-none bg-white text-sm font-bold shadow-sm focus:ring-2 focus:ring-primary-dark"
                 >
@@ -259,3 +268,5 @@ const ProductForm: React.FC = () => {
     </Layout>
   );
 };
+
+export default ProductForm;

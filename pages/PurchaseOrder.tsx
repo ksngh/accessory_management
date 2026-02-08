@@ -5,7 +5,8 @@ import Layout from '../components/Layout';
 import { getProducts } from '../src/api/products';
 import { getSuppliers } from '../src/api/suppliers';
 import { createOrder } from '../src/api/orders';
-import { Product, Supplier, Color, RingSize } from '../types';
+import { getStock } from '../src/api/stock';
+import { Product, Supplier, Color, RingSize, StockDetail } from '../types';
 import { COLORS, RING_SIZES } from '../constants';
 
 interface OrderRow {
@@ -20,7 +21,7 @@ const PurchaseOrder: React.FC = () => {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
+  const [selectedSupplier, setSelectedSupplier] = useState<number>(0);
   const [rows, setRows] = useState<OrderRow[]>([
     { rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }
   ]);
@@ -28,11 +29,17 @@ const PurchaseOrder: React.FC = () => {
   const [isProductPickerOpen, setIsProductPickerOpen] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [pickerRows, setPickerRows] = useState<Product[][]>([]);
+  const [stockMap, setStockMap] = useState<Record<number, StockDetail>>({});
 
-  // 상세 재고 데이터 생성을 위한 헬퍼 (목업)
   const getDetailedStock = (product: Product, color: Color, size?: RingSize) => {
-    const seed = (product.id.length + color.length + (size?.length || 0)) % 10;
-    return Math.floor((product.stock / 5) + seed);
+    const detail = stockMap[product.id];
+    if (!detail) return 0;
+    const match = detail.variants.find(variant => {
+      const sameColor = variant.color === color;
+      const sameSize = (variant.size ?? null) === (size ?? null);
+      return sameColor && sameSize;
+    });
+    return match?.quantity ?? 0;
   };
 
   useEffect(() => {
@@ -65,12 +72,36 @@ const PurchaseOrder: React.FC = () => {
     fetchProducts();
   }, [selectedSupplier]);
 
-  useEffect(() => {
-    const chunked: Product[][] = [];
-    for (let i = 0; i < products.length; i += 6) {
-      chunked.push(products.slice(i, i + 6));
+  const buildRowsFromProducts = (items: Product[]): Product[][] => {
+    const hasLayout = items.some(item => (item.displayRow ?? 0) !== 0 || (item.displayCol ?? 0) !== 0);
+    if (!hasLayout) {
+      const chunked: Product[][] = [];
+      for (let i = 0; i < items.length; i += 6) {
+        chunked.push(items.slice(i, i + 6));
+      }
+      return chunked;
     }
-    setPickerRows(chunked);
+
+    const rowMap = new Map<number, Product[]>();
+    items.forEach(item => {
+      const rowIndex = item.displayRow ?? 0;
+      const colIndex = item.displayCol ?? 0;
+      const normalized = { ...item, displayRow: rowIndex, displayCol: colIndex };
+      if (!rowMap.has(rowIndex)) rowMap.set(rowIndex, []);
+      rowMap.get(rowIndex)!.push(normalized);
+    });
+
+    const rowsSorted = Array.from(rowMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([, row]) =>
+        row.sort((a, b) => (a.displayCol ?? 0) - (b.displayCol ?? 0) || a.id - b.id)
+      );
+
+    return rowsSorted;
+  };
+
+  useEffect(() => {
+    setPickerRows(buildRowsFromProducts(products));
   }, [products]);
 
   const addRow = () => {
@@ -85,7 +116,16 @@ const PurchaseOrder: React.FC = () => {
     }
   };
 
-  const toggleStockVisibility = (rowId: string) => {
+  const toggleStockVisibility = async (rowId: string) => {
+    const row = rows.find(r => r.rowId === rowId);
+    if (row?.product && !stockMap[row.product.id]) {
+      try {
+        const detail = await getStock(row.product.id);
+        setStockMap(prev => ({ ...prev, [row.product.id]: detail }));
+      } catch (error) {
+        console.error('Failed to fetch stock detail', error);
+      }
+    }
     setRows(rows.map(r => r.rowId === rowId ? { ...r, isStockVisible: !r.isStockVisible } : r));
   };
 
@@ -136,15 +176,23 @@ const PurchaseOrder: React.FC = () => {
     setIsProductPickerOpen(true);
   };
 
-  const selectProduct = (product: Product) => {
+  const selectProduct = async (product: Product) => {
     if (activeRowId) {
-      setRows(rows.map(r => r.rowId === activeRowId ? { 
+        setRows(rows.map(r => r.rowId === activeRowId ? { 
         ...r, 
         product, 
         quantities: {}, 
         selectedSizes: product.hasSizes ? ['11호'] : [],
         isStockVisible: false
       } : r));
+      if (product && !stockMap[product.id]) {
+        try {
+          const detail = await getStock(product.id);
+          setStockMap(prev => ({ ...prev, [product.id]: detail }));
+        } catch (error) {
+          console.error('Failed to fetch stock detail', error);
+        }
+      }
       setIsProductPickerOpen(false);
       setActiveRowId(null);
     }
@@ -200,7 +248,7 @@ const PurchaseOrder: React.FC = () => {
           <select 
             value={selectedSupplier}
             onChange={(e) => {
-              setSelectedSupplier(e.target.value);
+              setSelectedSupplier(parseInt(e.target.value, 10));
               setRows([{ rowId: 'r-' + Math.random().toString(36).substr(2, 9), quantities: {}, selectedSizes: ['11호'], isStockVisible: false }]);
             }}
             className="w-full h-14 pl-5 pr-10 rounded-2xl border border-primary/30 focus:border-primary-dark focus:ring-2 focus:ring-primary/20 text-sm bg-white font-bold shadow-sm transition-all outline-none"
@@ -238,7 +286,7 @@ const PurchaseOrder: React.FC = () => {
                              <span className="material-symbols-outlined text-2xl">cancel</span>
                            </button>
                         </div>
-                        <p className="text-xl font-black text-primary-text leading-none">₩{row.product.price.toLocaleString()}</p>
+                        <p className="text-xl font-black text-primary-text leading-none">₩{Number(row.product.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                         
                         <div className="flex items-center gap-2 mt-1">
                           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-lg w-fit">
@@ -388,7 +436,7 @@ const PurchaseOrder: React.FC = () => {
             </div>
             <div className="text-right flex flex-col">
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">발주 예정액</span>
-              <span className="text-2xl font-black text-primary-text">₩{totalAmount.toLocaleString()}</span>
+              <span className="text-2xl font-black text-primary-text">₩{Number(totalAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </div>
           </div>
           <button 
@@ -431,7 +479,7 @@ const PurchaseOrder: React.FC = () => {
                     {row.map((product) => (
                       <div 
                         key={product.id}
-                        onClick={() => selectProduct(product)}
+                        onClick={() => void selectProduct(product)}
                         className="shrink-0 w-28 snap-start flex flex-col gap-2 cursor-pointer active:scale-95 transition-transform group"
                       >
                         <div className="relative aspect-square">
@@ -445,7 +493,7 @@ const PurchaseOrder: React.FC = () => {
                           </div>
                         </div>
                         <div className="px-1 text-center">
-                          <p className="text-[11px] font-black text-gray-800 leading-tight">₩{product.price.toLocaleString()}</p>
+                          <p className="text-[11px] font-black text-gray-800 leading-tight">₩{Number(product.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                         </div>
                       </div>
                     ))}

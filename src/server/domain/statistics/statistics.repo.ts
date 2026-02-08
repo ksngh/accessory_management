@@ -4,6 +4,7 @@ import { ProductStat } from './statistics.types';
 export const findProductStatistics = async (filters: {
   startDate: Date;
   endDate: Date;
+  userId: number;
   supplierId?: string;
   category?: string;
   color?: string;
@@ -25,10 +26,10 @@ export const findProductStatistics = async (filters: {
     JOIN products p ON oi.product_id = p.id
     JOIN categories c ON p.category_id = c.id
     JOIN suppliers s ON o.supplier_id = s.id
-    WHERE o.date >= $1 AND o.date < $2
+    WHERE o.date >= $1 AND o.date < $2 AND o.user_id = $3
   `;
-  const queryParams: any[] = [filters.startDate, filters.endDate];
-  let paramIndex = 3;
+  const queryParams: any[] = [filters.startDate, filters.endDate, filters.userId];
+  let paramIndex = 4;
 
   if (filters.supplierId) {
     query += ` AND o.supplier_id = $${paramIndex++}`;

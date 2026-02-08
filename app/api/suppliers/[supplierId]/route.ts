@@ -32,9 +32,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     console.log('--- Supplier updated successfully ---');
     return NextResponse.json(updatedSupplier);
   } catch (error) {
-    console.error(`--- Error in PATCH handler for supplierId: ${supplierId} ---`, error);
+    console.error('--- Error in PATCH handler for supplierId ---', error);
     if (error instanceof ZodError) {
-      return NextResponse.json({ message: 'Validation error', errors: error.errors }, { status: 400 });
+      return NextResponse.json({ message: 'Validation error', errors: error.issues }, { status: 400 });
     }
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
@@ -61,7 +61,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     console.log('--- Supplier deleted successfully ---');
     return new Response(null, { status: 204 });
   } catch (error) {
-    console.error(`--- Error in DELETE handler for supplierId: ${supplierId} ---`, error);
+    console.error('--- Error in DELETE handler for supplierId ---', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }

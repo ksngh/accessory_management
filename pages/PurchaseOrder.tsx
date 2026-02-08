@@ -120,8 +120,9 @@ const PurchaseOrder: React.FC = () => {
     const row = rows.find(r => r.rowId === rowId);
     if (row?.product && !stockMap[row.product.id]) {
       try {
-        const detail = await getStock(row.product.id);
-        setStockMap(prev => ({ ...prev, [row.product.id]: detail }));
+        const productId = row.product.id;
+        const detail = await getStock(productId);
+        setStockMap(prev => ({ ...prev, [productId]: detail }));
       } catch (error) {
         console.error('Failed to fetch stock detail', error);
       }

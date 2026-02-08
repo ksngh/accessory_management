@@ -14,7 +14,9 @@ const OrderDetail: React.FC = () => {
     if (!id) return;
     const fetchOrder = async () => {
       try {
-        const orderData = await getOrder(id);
+        const orderId = Number(id);
+        if (!Number.isFinite(orderId)) return;
+        const orderData = await getOrder(orderId);
         setOrder(orderData);
       } catch (error) {
         console.error("Failed to fetch order", error);

@@ -2,22 +2,29 @@ version: '3.8'
 
 services:
   frontend:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     ports:
       - "80:80"
+    volumes:
+      - ./public/uploads:/usr/share/nginx/html/uploads
     restart: unless-stopped
 
   backend:
-    image: node:18-alpine
+    image: node:20-alpine
     working_dir: /app
     volumes:
       - .:/app
-    command: sh -c "npm install && npm run dev:next"
+      - ./public/uploads:/app/public/uploads
+    command: sh -c "npm install && npm run dev:next -- --hostname 0.0.0.0"
     ports:
       - "3001:3001"
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://accessory_user:accessory_pass@postgres:5432/accessory_db
+      - CORS_ORIGIN=${CORS_ORIGIN}
     depends_on:
       - postgres
 

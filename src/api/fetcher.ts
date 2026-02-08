@@ -22,7 +22,7 @@ export const fetcher = async <T>(path: string, options?: RequestInit): Promise<T
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
-    return undefined as T;
+    throw new Error(`Unexpected response type: ${contentType || 'unknown'}`);
   }
 
   return response.json();

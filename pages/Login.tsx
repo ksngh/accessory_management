@@ -44,8 +44,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <span className="material-symbols-outlined text-4xl font-bold">diamond</span>
           </div>
           <div className="text-center space-y-1">
-            <h1 className="text-3xl font-black text-primary-text tracking-tighter">Luxury Shine</h1>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Inventory Management</p>
+            <h1 className="text-3xl font-black text-primary-text tracking-tighter">악세서리 관리 시스템</h1>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Accessory Inventory</p>
           </div>
         </div>
 
@@ -86,7 +86,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       </div>
 
       <div className="absolute bottom-12 text-center">
-        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-tighter">© 2024 Luxury Shine Lab. All rights reserved.</p>
+        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-tighter">© 2024 악세서리 관리 시스템. All rights reserved.</p>
       </div>
     </div>
   );

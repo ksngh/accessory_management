@@ -28,6 +28,49 @@ const ProductForm: React.FC = () => {
   const [bulkCategory, setBulkCategory] = useState<CategoryName | null>(null);
   const [bulkPrice, setBulkPrice] = useState('');
 
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new window.FileReader();
+      reader.onloadend = () => resolve(reader.result ? String(reader.result) : '');
+      reader.onerror = () => reject(new Error('Failed to read image'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const resizeImageIfNeeded = async (file: File): Promise<string> => {
+    const maxDimension = 1600;
+    const shouldResize = file.size > 1_000_000;
+    if (!shouldResize) {
+      return await readFileAsDataUrl(file);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = objectUrl;
+      });
+
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+      const targetWidth = Math.max(1, Math.round(image.width * scale));
+      const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return await readFileAsDataUrl(file);
+      }
+      context.drawImage(image, 0, 0, targetWidth, targetHeight);
+      return canvas.toDataURL('image/jpeg', 0.85);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -82,23 +125,27 @@ const ProductForm: React.FC = () => {
     let count = 0;
 
     fileList.forEach((file) => {
-      const reader = new window.FileReader();
-      reader.onloadend = () => {
-        const name = file.name.split('.')[0];
-        loadedEntries.push({
-          id: Math.random().toString(36).substr(2, 9),
-          image: reader.result ? String(reader.result) : null,
-          category: resolvedCategory,
-          price: bulkPrice,
-          name: name,
-          sku: name.toUpperCase(),
-        } as any);
-        count++;
-        if (count === fileList.length) {
-          setEntries(prev => [...prev, ...loadedEntries]);
-        }
-      };
-      reader.readAsDataURL(file as Blob);
+      resizeImageIfNeeded(file)
+        .then((dataUrl) => {
+          const name = file.name.split('.')[0];
+          loadedEntries.push({
+            id: Math.random().toString(36).substr(2, 9),
+            image: dataUrl || null,
+            category: resolvedCategory,
+            price: bulkPrice,
+            name: name,
+            sku: name.toUpperCase(),
+          } as any);
+        })
+        .catch((error) => {
+          console.error('Failed to process image', error);
+        })
+        .finally(() => {
+          count++;
+          if (count === fileList.length) {
+            setEntries(prev => [...prev, ...loadedEntries]);
+          }
+        });
     });
   };
 

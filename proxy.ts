@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const allowedOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+const allowedOrigin = process.env.CORS_ORIGIN ?? 'http://localhost';
 const allowedMethods = 'GET,DELETE,PATCH,POST,PUT,OPTIONS';
 const allowedHeaders = 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version';
 

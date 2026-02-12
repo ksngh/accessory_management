@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUserByUsername } from '@/server/domain/users/users.service';
 import { comparePassword, generateToken } from '@/server/auth/auth.service';
+import { getAuthCookieOptions } from '../../_utils/cookie';
 
 export async function POST(request: Request) {
   try {
@@ -35,10 +36,7 @@ export async function POST(request: Request) {
     response.cookies.set({
       name: 'accesstoken',
       value: token,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
+      ...getAuthCookieOptions(request),
       maxAge: 60 * 60 * 24,
     });
 

@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
+import { getAuthCookieOptions } from '../../_utils/cookie';
 
-export async function POST() {
+export async function POST(request: Request) {
   const response = NextResponse.json({ message: 'Logged out' });
 
   response.cookies.set({
     name: 'accesstoken',
     value: '',
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
+    ...getAuthCookieOptions(request),
     maxAge: 0,
   });
 

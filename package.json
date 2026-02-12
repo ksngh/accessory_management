@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:next": "cross-env PORT=3001 next dev",
+    "dev:next": "cross-env PORT=3001 NEXT_DISABLE_TURBOPACK=1 next dev",
     "build": "vite build",
     "preview": "vite preview"
   },

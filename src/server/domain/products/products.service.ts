@@ -2,11 +2,13 @@ import * as repo from './products.repo';
 import { Product } from './products.types';
 import { productBulkCreateSchema } from '@/server/validators/product';
 import { saveBase64Image } from '@/server/utils/file';
+import { normalizeImageUrl } from '@/server/utils/image';
 
 export const getProducts = async (userId: number, filters: { supplierId?: number, category?: string }): Promise<Product[]> => {
   const products = await repo.findAllProducts(userId, filters);
   return products.map(product => ({
     ...product,
+    imageUrl: normalizeImageUrl(product.imageUrl) ?? product.imageUrl,
     hasSizes: product.category === '반지',
   }));
 };
@@ -16,6 +18,7 @@ export const getProduct = async (id: number, userId: number): Promise<Product | 
   if (!product) return null;
   return {
     ...product,
+    imageUrl: normalizeImageUrl(product.imageUrl) ?? product.imageUrl,
     hasSizes: product.category === '반지',
   };
 };

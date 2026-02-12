@@ -23,6 +23,31 @@ export const updateSupplier = async (id: number, name: string, userId: number): 
 };
 
 export const deleteSupplier = async (id: number, userId: number): Promise<boolean> => {
-  const result = await pool.query('DELETE FROM suppliers WHERE id = $1 AND user_id = $2', [id, userId]);
-  return (result.rowCount ?? 0) > 0;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const productIdsResult = await client.query(
+      'SELECT id FROM products WHERE supplier_id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    const productIds: number[] = productIdsResult.rows.map((row) => row.id);
+
+    if (productIds.length > 0) {
+      await client.query('DELETE FROM order_items WHERE product_id = ANY($1::int[])', [productIds]);
+    }
+
+    await client.query('DELETE FROM orders WHERE supplier_id = $1 AND user_id = $2', [id, userId]);
+    await client.query('DELETE FROM products WHERE supplier_id = $1 AND user_id = $2', [id, userId]);
+
+    const result = await client.query('DELETE FROM suppliers WHERE id = $1 AND user_id = $2', [id, userId]);
+
+    await client.query('COMMIT');
+    return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };

@@ -75,11 +75,18 @@ export const createOrder = async (order: any, userId: number): Promise<Order> =>
     let itemCount = 0;
 
     for (const item of order.items) {
-      const productResult = await client.query('SELECT price FROM products WHERE id = $1 AND user_id = $2', [item.productId, userId]);
+      const productResult = await client.query(
+        'SELECT price, supplier_id as "supplierId" FROM products WHERE id = $1 AND user_id = $2',
+        [item.productId, userId]
+      );
       if (productResult.rows.length === 0) {
         throw new Error(`Product with ID ${item.productId} not found for this user.`);
       }
-      const productPrice = productResult.rows[0].price;
+      const product = productResult.rows[0];
+      if (product.supplierId !== order.supplierId) {
+        throw new Error(`Product with ID ${item.productId} does not belong to supplier ${order.supplierId}.`);
+      }
+      const productPrice = product.price;
       totalAmount += productPrice * item.quantity;
       itemCount += item.quantity;
     }

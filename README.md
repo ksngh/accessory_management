@@ -18,3 +18,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1sTi4gavlcFj0zBk7UTYq5Y
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Run with Docker Compose
+
+- Docker 전용 환경변수는 `.env.docker`를 사용합니다.
+- 실행:
+   `docker compose --env-file .env.docker up --build`

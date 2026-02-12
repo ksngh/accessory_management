@@ -20,19 +20,16 @@ services:
     ports:
       - "3001:3001"
     restart: unless-stopped
-    environment:
-      - DATABASE_URL=postgres://accessory_user:accessory_pass@postgres:5432/accessory_db
-      - CORS_ORIGIN=${CORS_ORIGIN}
+    env_file:
+      - ./.env.docker
     depends_on:
       - postgres
 
   postgres:
     image: postgres:16
     restart: unless-stopped
-    environment:
-      - POSTGRES_DB=accessory_db
-      - POSTGRES_USER=accessory_user
-      - POSTGRES_PASSWORD=accessory_pass
+    env_file:
+      - ./.env.docker
     ports:
       - "5432:5432"
     volumes:
